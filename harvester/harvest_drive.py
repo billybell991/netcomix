@@ -288,6 +288,17 @@ def harvest(root_folder_id: str) -> None:
         elif Path(c["name"]).suffix.lower() in ARCHIVE_EXTS:
             archives.append((c, None))  # parent = root → infer series from name
 
+    # Optional cap (handy for proof-of-concept runs).
+    limit_raw = os.environ.get("LIMIT", "").strip()
+    if limit_raw:
+        try:
+            limit = int(limit_raw)
+            if limit > 0:
+                archives = archives[:limit]
+                print(f"  (LIMIT={limit} — processing only the first {limit} archive(s))")
+        except ValueError:
+            print(f"  ! ignoring non-numeric LIMIT={limit_raw!r}", file=sys.stderr)
+
     series_map: dict[str, dict] = {}  # series_id → {entry, issues:[]}
     flush_counter = 0
 
