@@ -50,8 +50,8 @@ export function pageUrl(issuePath: string, fileOrPage: string | PageManifest): s
   return `${COMICS_BASE}${issuePath}/${file}`;
 }
 
-/** URL for a cover thumbnail. Prefer fileId in drive mode. */
+/** URL for a cover thumbnail. Prefer Drive's keyless thumbnail endpoint when fileId present. */
 export function coverUrl(basePath: string, file: string, fileId?: string): string {
-  if (fileId && isDriveConfigured()) return mediaUrl(fileId);
+  if (fileId) return `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
   return `${COMICS_BASE}${basePath}/${file}`;
 }
