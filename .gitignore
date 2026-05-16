@@ -27,3 +27,10 @@ comics-source/*.cbr
 comics-source/*.zip
 !comics-source/.gitkeep
 !comics-source/README.md
+
+qa-*.png
+qa-*.jpg
+
+# Locally-harvested comic pages (Drive scan produces fileIds; live site fetches from Drive)
+public/comics/savage-tales/
+

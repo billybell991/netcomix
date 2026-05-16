@@ -73,13 +73,13 @@ test.describe("NetComix critical path", () => {
     expect(tPanel2).not.toBe(tPanel);
   });
 
-  test("HUD opens with center tap and closes", async ({ page }) => {
+  test("HUD opens with double-tap and closes", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("series-card-demo-series").click();
     await page.getByTestId("issue-card-issue-01").click();
     const box = await page.getByTestId("reader").boundingBox();
     if (!box) throw new Error("no bounding box");
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
     await expect(page.getByTestId("hud")).toBeVisible();
     await page.getByTestId("hud-close").click();
     await expect(page.getByTestId("hud")).toBeHidden();
@@ -91,7 +91,7 @@ test.describe("NetComix critical path", () => {
     await page.getByTestId("issue-card-issue-01").click();
     const box = await page.getByTestId("reader").boundingBox();
     if (!box) throw new Error("no bounding box");
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
     await page.getByTestId("sounds-toggle").click();
     // Reload, re-navigate (we don't persist route — only settings & progress)
     await page.reload();
@@ -99,7 +99,7 @@ test.describe("NetComix critical path", () => {
     await page.getByTestId("issue-card-issue-01").click();
     const box2 = await page.getByTestId("reader").boundingBox();
     if (!box2) throw new Error("no bounding box 2");
-    await page.mouse.click(box2.x + box2.width / 2, box2.y + box2.height / 2);
+    await page.mouse.dblclick(box2.x + box2.width / 2, box2.y + box2.height / 2);
     await expect(page.getByTestId("sounds-toggle")).not.toBeChecked();
   });
 

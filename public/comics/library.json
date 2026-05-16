@@ -1,12 +1,19 @@
 {
-  "generatedAt": "2026-05-16T12:51:47.418794Z",
+  "generatedAt": "2026-05-16T20:43:09.811213+00:00",
   "series": [
     {
       "id": "demo-series",
-      "title": "Demo Comix",
-      "cover": "page-001.svg",
+      "title": "Demo Series",
+      "cover": "issue-01/page-001.svg",
       "issueCount": 2,
       "path": "demo-series"
+    },
+    {
+      "id": "savage-tales",
+      "title": "Savage Tales",
+      "cover": "page-001.jpg",
+      "issueCount": 1,
+      "path": "savage-tales"
     }
   ]
 }

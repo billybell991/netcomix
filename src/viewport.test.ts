@@ -7,20 +7,20 @@ describe("snapToPanel", () => {
   it("centers a small panel on screen with breathing room", () => {
     const panel = { x: 100, y: 200, w: 200, h: 200, centerX: 200, centerY: 300 };
     const t = snapToPanel(panel, screen);
-    // Scale should be limited by smaller of width/height fit (both equal here)
-    expect(t.scale).toBeCloseTo((screen.width / 200) * 0.95, 5);
-    // Panel center should land near screen center
+    expect(t.scale).toBeCloseTo((screen.width / 200) * 0.96, 5);
     expect(t.translateX + panel.centerX * t.scale).toBeCloseTo(screen.width / 2, 5);
     expect(t.translateY + panel.centerY * t.scale).toBeCloseTo(screen.height / 2, 5);
   });
 
-  it("uses the smaller of width/height scale (panel must fit entirely)", () => {
-    // Wide panel: height becomes the constraint
+  it("fits a wide panel without cropping (letterboxes vertically)", () => {
     const wide = { x: 0, y: 0, w: 1000, h: 100, centerX: 500, centerY: 50 };
     const t = snapToPanel(wide, screen);
-    const scaleX = (screen.width / wide.w) * 0.95;
-    const scaleY = (screen.height / wide.h) * 0.95;
+    const scaleX = (screen.width / wide.w) * 0.96;
+    const scaleY = (screen.height / wide.h) * 0.96;
     expect(t.scale).toBe(Math.min(scaleX, scaleY));
+    // Panel must NOT overflow the viewport on either axis
+    expect(wide.w * t.scale).toBeLessThanOrEqual(screen.width + 1e-6);
+    expect(wide.h * t.scale).toBeLessThanOrEqual(screen.height + 1e-6);
   });
 
   it("handles tiny panels without exploding", () => {

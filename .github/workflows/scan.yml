@@ -21,6 +21,8 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -46,3 +48,15 @@ jobs:
           DRIVE_FOLDER_ID: ${{ inputs.folder_id || vars.DRIVE_FOLDER_ID }}
           LIMIT: ${{ inputs.limit }}
         run: python harvester/harvest_drive.py
+
+      - name: Commit static manifests
+        run: |
+          git config user.name "netcomix-bot"
+          git config user.email "netcomix-bot@users.noreply.github.com"
+          git add public/comics
+          if git diff --cached --quiet; then
+            echo "No manifest changes to commit."
+          else
+            git commit -m "scan: refresh comic manifests"
+            git push
+          fi

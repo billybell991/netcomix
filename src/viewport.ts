@@ -14,21 +14,25 @@ export interface Size {
   height: number;
 }
 
-const PANEL_PADDING = 0.95; // 5% breathing room
+const PANEL_PADDING = 0.96; // 4% breathing room — text-bubble overflow is already baked into the panel box by the harvester
 
 /**
  * Compute transform that puts the panel's center on the screen's center,
- * scaled so the panel fits (with breathing room).
+ * scaled to fit the panel ENTIRELY inside the screen (no cropping).
+ *
+ * Cropping a comic panel hides speech bubbles and breaks the read, so we
+ * accept letterbox bars on the non-binding axis when the panel's aspect
+ * ratio mismatches the screen. The user can pinch-zoom + drag-pan if they
+ * want a tighter view.
  */
 export function snapToPanel(panel: Panel, screen: Size): ViewportTransform {
   // Guard against malformed panels with zero/negative dimensions
   if (panel.w <= 0 || panel.h <= 0) {
     return { scale: 1, translateX: 0, translateY: 0 };
   }
-  // Fit by whichever dimension is the binding constraint
-  const scaleX = (screen.width / panel.w) * PANEL_PADDING;
-  const scaleY = (screen.height / panel.h) * PANEL_PADDING;
-  const scale = Math.min(scaleX, scaleY);
+  const scaleX = screen.width / panel.w;
+  const scaleY = screen.height / panel.h;
+  const scale = Math.min(scaleX, scaleY) * PANEL_PADDING;
 
   const translateX = screen.width / 2 - panel.centerX * scale;
   const translateY = screen.height / 2 - panel.centerY * scale;

@@ -35,9 +35,6 @@ from typing import Iterable
 import cv2
 import numpy as np
 import rarfile
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 ARCHIVE_EXTS = {".cbz", ".zip", ".cbr", ".rar"}
@@ -71,12 +68,9 @@ class PageOut:
 # ─── Drive helpers ───────────────────────────────────────────────────────
 
 def drive_service():
-    """Build a Drive client using an OAuth refresh token (acts as the user).
-
-    Service accounts can't own files in a personal My Drive (they have 0 storage
-    quota), so we use installed-app OAuth: the user authorises once locally, and
-    we store the refresh token as a GitHub secret.
-    """
+    """Build a Drive client using an OAuth refresh token (acts as the user)."""
+    from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
     client_id = os.environ["GOOGLE_OAUTH_CLIENT_ID"]
     client_secret = os.environ["GOOGLE_OAUTH_CLIENT_SECRET"]
     refresh_token = os.environ["GOOGLE_OAUTH_REFRESH_TOKEN"]
@@ -136,6 +130,7 @@ def ensure_folder(svc, parent_id: str, name: str) -> str:
 
 
 def upload_file(svc, parent_id: str, name: str, local_path: Path, mime: str, replace: bool = True) -> str:
+    from googleapiclient.http import MediaFileUpload
     media = MediaFileUpload(str(local_path), mimetype=mime, resumable=False)
     existing = find_child(svc, parent_id, name) if replace else None
     if existing:
@@ -170,6 +165,7 @@ def upload_json(svc, parent_id: str, name: str, data: dict) -> str:
 
 
 def download(svc, file_id: str, dest: Path) -> None:
+    from googleapiclient.http import MediaIoBaseDownload
     req = svc.files().get_media(fileId=file_id, supportsAllDrives=True)
     with dest.open("wb") as fh:
         dl = MediaIoBaseDownload(fh, req)
@@ -233,7 +229,12 @@ def detect_panels(image_path: Path) -> tuple[int, int, list[Panel], str]:
 
     min_w = int(w * 0.12)
     min_h = int(h * 0.08)
-    max_area = w * h * 0.95
+    max_area = w * h * 0.75  # anything bigger is almost certainly the page-frame itself
+    min_panel_area = w * h * 0.08  # drop tiny fragments (logos, blurbs, etc.)
+    # Pad each detected panel by this many pixels on every side so overflowing
+    # speech bubbles, captions, and SFX text stay in frame when snapped.
+    pad_x = int(w * 0.025)
+    pad_y = int(h * 0.02)
     panels: list[Panel] = []
     for cnt in contours:
         x, y, cw, ch = cv2.boundingRect(cnt)
@@ -241,12 +242,39 @@ def detect_panels(image_path: Path) -> tuple[int, int, list[Panel], str]:
             continue
         if cw * ch > max_area:
             continue
+        if cw * ch < min_panel_area:
+            continue
         if x < 0 or y < 0 or x + cw > w or y + ch > h:
             continue
-        panels.append(Panel(x, y, cw, ch, x + cw // 2, y + ch // 2))
+        # Apply text-overflow padding, clamped to page bounds
+        px = max(0, x - pad_x)
+        py = max(0, y - pad_y)
+        pw = min(w, x + cw + pad_x) - px
+        ph = min(h, y + ch + pad_y) - py
+        panels.append(Panel(px, py, pw, ph, px + pw // 2, py + ph // 2))
 
-    bucket = max(1, h // 20)
-    panels.sort(key=lambda p: (p.y // bucket, p.x))
+    # Splash detection: pages where we found <2 real panels, or where the panels
+    # cover less than 55% of the page area, are likely covers / TOC / credits /
+    # splash pages. Show them as full-page rather than awkwardly zoomed in.
+    page_area = w * h
+    total_area = sum(p.w * p.h for p in panels)
+    if len(panels) < 2 or (page_area > 0 and total_area / page_area < 0.55):
+        panels = []
+
+    # Reading order: top-to-bottom, left-to-right — but with overlap awareness
+    # so a tall left-column panel reads before a top-right stacked panel.
+    # Rule: if two panels' y-ranges overlap by >40% of the shorter panel's
+    # height, they're in the "same row" and we order by x; otherwise by y_top.
+    import functools
+
+    def cmp(a: Panel, b: Panel) -> int:
+        a_bot, b_bot = a.y + a.h, b.y + b.h
+        overlap = max(0, min(a_bot, b_bot) - max(a.y, b.y))
+        if overlap > 0.4 * min(a.h, b.h):
+            return -1 if a.x < b.x else (1 if a.x > b.x else 0)
+        return -1 if a.y < b.y else (1 if a.y > b.y else 0)
+
+    panels.sort(key=functools.cmp_to_key(cmp))
 
     avg = cv2.mean(img)[:3]
     dom = "#{:02x}{:02x}{:02x}".format(int(avg[2]), int(avg[1]), int(avg[0]))
@@ -383,6 +411,12 @@ def harvest(root_folder_id: str) -> None:
                 "pages": [_page_to_dict(p) for p in page_outs],
             }
             issue_file_id = upload_json(svc, issue_folder_id, "issue.json", issue_data)
+            # Static mirror for the PWA — manifest in repo, images in Drive.
+            repo_root = Path(__file__).resolve().parent.parent
+            static_issue_dir = repo_root / "public" / "comics" / series_id / issue_id
+            static_issue_dir.mkdir(parents=True, exist_ok=True)
+            with (static_issue_dir / "issue.json").open("w", encoding="utf-8") as fh:
+                json.dump(issue_data, fh, indent=2)
             _register_issue(series_map, series_id, series_title, series_folder_id,
                             issue_id, issue_label, len(page_outs),
                             page_outs[0].file, page_outs[0].fileId, issue_file_id)
@@ -395,11 +429,22 @@ def harvest(root_folder_id: str) -> None:
 
 
 def _publish_manifest(svc, root_folder_id: str, series_map: dict) -> None:
+    # Static manifest directory at repo public/comics — committed back by the
+    # workflow so the PWA loads tiny JSON from GitHub Pages while images come
+    # from Drive. Avoids the "folder must be publicly listable" requirement.
+    repo_root = Path(__file__).resolve().parent.parent
+    static_root = repo_root / "public" / "comics"
+    static_root.mkdir(parents=True, exist_ok=True)
+
     library_series = []
     for sid, s in series_map.items():
         s["issues"].sort(key=lambda i: i["id"])
         series_doc = {"id": sid, "title": s["title"], "issues": s["issues"]}
         series_file_id = upload_json(svc, s["folderId"], "series.json", series_doc)
+        # Also write static copy
+        (static_root / sid).mkdir(parents=True, exist_ok=True)
+        with (static_root / sid / "series.json").open("w", encoding="utf-8") as fh:
+            json.dump(series_doc, fh, indent=2)
         first = s["issues"][0] if s["issues"] else {}
         library_series.append({
             "id": sid,
@@ -415,8 +460,25 @@ def _publish_manifest(svc, root_folder_id: str, series_map: dict) -> None:
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "series": sorted(library_series, key=lambda s: s["title"]),
     }
+    # Merge with any pre-existing entries (e.g. test fixtures like demo-series
+    # that live in the repo and aren't sourced from Drive). Drive results take
+    # priority — but anything not currently in Drive is preserved so existing
+    # static fixtures keep working after a scan rewrite.
+    existing_path = static_root / "library.json"
+    if existing_path.exists():
+        try:
+            existing = json.loads(existing_path.read_text(encoding="utf-8"))
+            drive_ids = {s["id"] for s in library_series}
+            for s in existing.get("series", []):
+                if s.get("id") and s["id"] not in drive_ids:
+                    library_doc["series"].append(s)
+            library_doc["series"].sort(key=lambda s: s["title"])
+        except Exception as e:
+            print(f"  ! could not merge existing library.json: {e}", file=sys.stderr)
     upload_json(svc, root_folder_id, "library.json", library_doc)
-    print(f"  ✓ manifest flushed ({len(library_series)} series so far)")
+    with existing_path.open("w", encoding="utf-8") as fh:
+        json.dump(library_doc, fh, indent=2)
+    print(f"  ✓ manifest flushed ({len(library_doc['series'])} series total)")
 
 
 def _register_issue(series_map, sid, stitle, sfolder, iid, ilabel, page_count, cover_file, cover_id, issue_id):

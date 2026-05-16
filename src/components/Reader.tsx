@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { IssueManifest } from "../types";
 import { pageUrl } from "../library";
 import {
@@ -39,9 +39,10 @@ export function Reader({ issue, issuePath, onBack }: Props) {
   });
   const [hudOpen, setHudOpen] = useState(false);
 
-  // Pinch zoom — overrides snap until user navigates again
-  const stageRef = useRef<HTMLDivElement | null>(null);
-  const pinch = usePinchZoom(stageRef);
+  // Pinch zoom + drag pan — overrides snap until Next/Prev resets it.
+  // Use a callback ref backed by state so the gesture effect re-runs when
+  // the stage element mounts (Reader may render an empty state first).
+  const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null);
 
   // Resize listener
   useEffect(() => {
@@ -69,7 +70,9 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     return snapToPanel(panel, screenSize);
   }, [issue, currentPage, position, screenSize]);
 
-  // Effective transform: pinch overrides snap if user is zoomed
+  const pinch = usePinchZoom(stageEl, snapTransform);
+
+  // Effective transform: gesture overrides snap when user is panning / zoomed
   const effectiveTransform = pinch.active && pinch.transform ? pinch.transform : snapTransform;
 
   // Pre-cache next page image
@@ -81,13 +84,6 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     img.src = pageUrl(issuePath, nextPage);
   }, [issue, position.pageIndex, issuePath]);
 
-  // Long-press timer — useRef so it survives re-renders and doesn't leak.
-  // MUST be declared before any early return to satisfy Rules of Hooks.
-  const pressTimerRef = useRef<number | undefined>(undefined);
-  useEffect(() => () => {
-    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
-  }, []);
-
   if (!issue || !currentPage) {
     return (
       <div className="empty-state" data-testid="reader-loading">
@@ -97,12 +93,9 @@ export function Reader({ issue, issuePath, onBack }: Props) {
   }
 
   const goNext = () => {
-    // Zoom override: if user is pinch-zoomed, first reset to snap, don't advance
-    if (pinch.active) {
-      pinch.reset();
-      hapticLight();
-      return;
-    }
+    // Any active pan/zoom is cleared as we move on — the user can re-engage
+    // gestures on the new panel/page if they want to peek around.
+    if (pinch.active) pinch.reset();
     const next = nextPosition(position, issue);
     if (!next) return;
     setPosition(next);
@@ -114,11 +107,7 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     }
   };
   const goPrev = () => {
-    if (pinch.active) {
-      pinch.reset();
-      hapticLight();
-      return;
-    }
+    if (pinch.active) pinch.reset();
     const prev = prevPosition(position, issue);
     if (!prev) return;
     setPosition(prev);
@@ -130,36 +119,11 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     }
   };
 
-  // Center-tap / long-press HUD trigger
-  const handleStageTap = (e: React.MouseEvent) => {
+  // Double-tap anywhere (outside Next/Prev) toggles the HUD.
+  const handleDoubleClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    // Ignore taps on buttons / HUD
     if (target.closest("[data-nohud]")) return;
-    if (settings.hudTrigger === "long-press") return;
-    const rect = stageRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    // Center 40% × 40% region triggers HUD
-    if (
-      x > rect.width * 0.3 &&
-      x < rect.width * 0.7 &&
-      y > rect.height * 0.3 &&
-      y < rect.height * 0.7
-    ) {
-      setHudOpen((v) => !v);
-    }
-  };
-
-  const onPointerDown = () => {
-    if (settings.hudTrigger === "center-tap") return;
-    pressTimerRef.current = window.setTimeout(() => setHudOpen(true), 550);
-  };
-  const onPointerUp = () => {
-    if (pressTimerRef.current) {
-      clearTimeout(pressTimerRef.current);
-      pressTimerRef.current = undefined;
-    }
+    setHudOpen((v) => !v);
   };
 
   const safeColor = /^#[0-9a-fA-F]{6}$/.test(currentPage.dominantColor ?? "")
@@ -182,13 +146,10 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     <div
       className="reader"
       data-testid="reader"
-      onClick={handleStageTap}
-      onPointerDown={onPointerDown}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
+      onDoubleClick={handleDoubleClick}
     >
       <div className="reader-bg" style={bgStyle} data-testid="reader-bg" />
-      <div className="reader-stage" ref={stageRef}>
+      <div className="reader-stage" ref={setStageEl}>
         <img
           className="reader-page-img"
           src={pageUrl(issuePath, currentPage)}

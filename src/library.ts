@@ -1,7 +1,7 @@
 // Library fetch helpers — Drive-backed when configured, static /comics/ fallback otherwise.
 
-import { getConfig, isDriveConfigured } from "./config";
-import { fetchJsonById, findByName, mediaUrl } from "./drive";
+import { isDriveConfigured } from "./config";
+import { mediaUrl } from "./drive";
 import type { IssueIndexEntry, IssueManifest, Library, PageManifest, SeriesEntry, SeriesIndex } from "./types";
 
 // ─── Static-mode (kept for local dev / demo fallback) ──────────────────────
@@ -20,31 +20,21 @@ async function fetchJson<T>(url: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-// ─── Public API (dispatches to Drive or static based on config) ────────────
+// ─── Public API ────────────────────────────────────────────────────────────
+// Manifests (library.json / series.json / issue.json) are always served from
+// the static /public/comics/ tree — published by the harvester and committed
+// back to the repo. Only the binary page images come from Drive (via fileId),
+// which sidesteps Drive's folder-listing limitation for API-key clients.
 
 export async function fetchLibrary(): Promise<Library> {
-  if (isDriveConfigured()) {
-    const root = getConfig().driveFolderId;
-    const lib = await findByName(root, "library.json");
-    if (!lib) throw new Error("library.json not found in Drive folder — run a Scan first.");
-    return fetchJsonById<Library>(lib.id);
-  }
   return fetchJson<Library>(`${COMICS_BASE}library.json`);
 }
 
-export async function fetchSeries(seriesPath: string, series?: SeriesEntry): Promise<SeriesIndex> {
-  if (isDriveConfigured()) {
-    if (!series?.seriesFileId) throw new Error(`Series ${seriesPath} missing seriesFileId.`);
-    return fetchJsonById<SeriesIndex>(series.seriesFileId);
-  }
+export async function fetchSeries(seriesPath: string, _series?: SeriesEntry): Promise<SeriesIndex> {
   return fetchJson<SeriesIndex>(`${COMICS_BASE}${seriesPath}/series.json`);
 }
 
-export async function fetchIssue(issuePath: string, issue?: IssueIndexEntry): Promise<IssueManifest> {
-  if (isDriveConfigured()) {
-    if (!issue?.issueFileId) throw new Error(`Issue ${issuePath} missing issueFileId.`);
-    return fetchJsonById<IssueManifest>(issue.issueFileId);
-  }
+export async function fetchIssue(issuePath: string, _issue?: IssueIndexEntry): Promise<IssueManifest> {
   return fetchJson<IssueManifest>(`${COMICS_BASE}${issuePath}/issue.json`);
 }
 
