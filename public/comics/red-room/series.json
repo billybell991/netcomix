@@ -1,0 +1,42 @@
+{
+  "id": "red-room",
+  "title": "Red Room",
+  "issues": [
+    {
+      "id": "red-room-001-2021-digital-phillywilly-empire-1yyGum",
+      "title": "Red Room #001",
+      "cover": "page-001.jpg",
+      "coverFileId": "1Gd8tDr7VS0TzJLGkEBO9BEoLBLcJ0a7x",
+      "pageCount": 68,
+      "path": "red-room-001-2021-digital-phillywilly-empire-1yyGum",
+      "issueFileId": "1YX_RCz0oI1GM3goJ4lxx5vccR4br0CLI"
+    },
+    {
+      "id": "red-room-002-2021-digital-phillywilly-empire-1yyGum",
+      "title": "Red Room #002",
+      "cover": "page-001.jpg",
+      "coverFileId": "11-qEZbbcEw7dwp8F2PZo6uKBYVadFWfY",
+      "pageCount": 26,
+      "path": "red-room-002-2021-digital-phillywilly-empire-1yyGum",
+      "issueFileId": "1tGR1XxWH9pEZjab9PDR8yHFEGcGIVhgh"
+    },
+    {
+      "id": "red-room-003-2021-digital-phillywilly-empire-1yyGum",
+      "title": "Red Room #003",
+      "cover": "page-001.jpg",
+      "coverFileId": "1gCSn47vNVD0AukMVOEH9-cQmkVvjLWpS",
+      "pageCount": 35,
+      "path": "red-room-003-2021-digital-phillywilly-empire-1yyGum",
+      "issueFileId": "1wJwOw74DnogE5dnXp2aXA1U01qqJjLIr"
+    },
+    {
+      "id": "red-room-004-2021-digital-phillywilly-empire-1yyGum",
+      "title": "Red Room #004",
+      "cover": "page-001.jpg",
+      "coverFileId": "1Vrojteqr8YGwHTp_nGSgoUCZP9Z7hynB",
+      "pageCount": 35,
+      "path": "red-room-004-2021-digital-phillywilly-empire-1yyGum",
+      "issueFileId": "1ripo2aTmGuUbZaCsZJc-DNfyTQ207Hty"
+    }
+  ]
+}
