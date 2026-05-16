@@ -1,0 +1,37 @@
+{
+  "id": "issue-01",
+  "title": "Demo Comix #001",
+  "series": "demo-series",
+  "cover": "page-001.svg",
+  "pages": [
+    {
+      "file": "page-001.svg",
+      "width": 800,
+      "height": 1200,
+      "panels": [],
+      "dominantColor": "#1a3a6e"
+    },
+    {
+      "file": "page-002.svg",
+      "width": 800,
+      "height": 1200,
+      "panels": [
+        { "x": 40,  "y": 40,  "w": 720, "h": 380, "centerX": 400, "centerY": 230 },
+        { "x": 40,  "y": 440, "w": 350, "h": 350, "centerX": 215, "centerY": 615 },
+        { "x": 410, "y": 440, "w": 350, "h": 350, "centerX": 585, "centerY": 615 },
+        { "x": 40,  "y": 810, "w": 720, "h": 350, "centerX": 400, "centerY": 985 }
+      ],
+      "dominantColor": "#6e1a3a"
+    },
+    {
+      "file": "page-003.svg",
+      "width": 800,
+      "height": 1200,
+      "panels": [
+        { "x": 40, "y": 40,  "w": 720, "h": 560, "centerX": 400, "centerY": 320 },
+        { "x": 40, "y": 620, "w": 720, "h": 540, "centerX": 400, "centerY": 890 }
+      ],
+      "dominantColor": "#2e6e1a"
+    }
+  ]
+}

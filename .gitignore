@@ -1,0 +1,29 @@
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.local
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+# Harvester
+harvester/.venv/
+harvester/__pycache__/
+harvester/*.pyc
+harvester/output/
+harvester/cache/
+
+# Don't commit raw comic source files (too large) — keep extracted output in public/comics/
+comics-source/*.cbz
+comics-source/*.cbr
+comics-source/*.zip
+!comics-source/.gitkeep
+!comics-source/README.md

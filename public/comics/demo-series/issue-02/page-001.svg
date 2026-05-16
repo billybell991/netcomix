@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1200" width="800" height="1200">
+  <rect width="800" height="1200" fill="#3a1a6e"/>
+  <text x="400" y="500" text-anchor="middle" font-family="Arial Black" font-size="72" fill="#ffd700">DEMO</text>
+  <text x="400" y="600" text-anchor="middle" font-family="Arial Black" font-size="72" fill="#ffd700">COMIX</text>
+  <text x="400" y="720" text-anchor="middle" font-family="Arial" font-size="40" fill="#fff">#002</text>
+</svg>

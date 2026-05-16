@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1200" width="800" height="1200">
+  <rect width="800" height="1200" fill="#2e6e1a"/>
+  <rect x="40" y="40"  width="720" height="560" fill="#ffab91" stroke="#000" stroke-width="6"/>
+  <text x="400" y="330" text-anchor="middle" font-family="Arial Black" font-size="72" fill="#222">TOP PANEL</text>
+  <rect x="40" y="620" width="720" height="540" fill="#80deea" stroke="#000" stroke-width="6"/>
+  <text x="400" y="900" text-anchor="middle" font-family="Arial Black" font-size="72" fill="#222">BOTTOM PANEL</text>
+</svg>

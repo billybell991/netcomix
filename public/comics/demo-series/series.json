@@ -1,0 +1,20 @@
+{
+  "id": "demo-series",
+  "title": "Demo Comix",
+  "issues": [
+    {
+      "id": "issue-01",
+      "title": "Demo Comix #001",
+      "cover": "page-001.svg",
+      "pageCount": 3,
+      "path": "demo-series/issue-01"
+    },
+    {
+      "id": "issue-02",
+      "title": "Demo Comix #002",
+      "cover": "page-001.svg",
+      "pageCount": 2,
+      "path": "demo-series/issue-02"
+    }
+  ]
+}

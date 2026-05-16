@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1200" width="800" height="1200">
+  <rect width="800" height="1200" fill="#6e1a3a"/>
+  <!-- Panel 1: wide top -->
+  <rect x="40"  y="40"  width="720" height="380" fill="#ffe082" stroke="#000" stroke-width="6"/>
+  <text x="400" y="240" text-anchor="middle" font-family="Arial Black" font-size="60" fill="#222">PANEL 1</text>
+  <!-- Panel 2: bottom-left -->
+  <rect x="40"  y="440" width="350" height="350" fill="#90caf9" stroke="#000" stroke-width="6"/>
+  <text x="215" y="630" text-anchor="middle" font-family="Arial Black" font-size="44" fill="#222">PANEL 2</text>
+  <!-- Panel 3: bottom-right -->
+  <rect x="410" y="440" width="350" height="350" fill="#a5d6a7" stroke="#000" stroke-width="6"/>
+  <text x="585" y="630" text-anchor="middle" font-family="Arial Black" font-size="44" fill="#222">PANEL 3</text>
+  <!-- Panel 4: wide bottom -->
+  <rect x="40"  y="810" width="720" height="350" fill="#ce93d8" stroke="#000" stroke-width="6"/>
+  <text x="400" y="1000" text-anchor="middle" font-family="Arial Black" font-size="60" fill="#222">PANEL 4</text>
+</svg>
