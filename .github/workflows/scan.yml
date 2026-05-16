@@ -58,5 +58,10 @@ jobs:
             echo "No manifest changes to commit."
           else
             git commit -m "scan: refresh comic manifests"
-            git push
+            # Rebase on top of any concurrent commits before pushing.
+            for i in 1 2 3 4 5; do
+              git pull --rebase origin main && git push && break
+              echo "push attempt $i failed, retrying..."
+              sleep 3
+            done
           fi
