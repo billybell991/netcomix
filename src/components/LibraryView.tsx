@@ -50,7 +50,7 @@ export function LibraryView({ library, favorites, onSelectSeries, onFavoritesCha
         <div className="section-title">All Series</div>
         {allSeries.length === 0 ? (
           <p style={{ color: "#888" }} data-testid="empty-library">
-            No comics yet. Drop a .cbz into <code>comics-source/</code> and push.
+            No comics yet. Drop a .cbz/.cbr into your Drive folder, then tap ⚙ → Scan.
           </p>
         ) : (
           <Grid

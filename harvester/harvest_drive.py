@@ -35,7 +35,7 @@ from typing import Iterable
 import cv2
 import numpy as np
 import rarfile
-from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
@@ -71,9 +71,23 @@ class PageOut:
 # ─── Drive helpers ───────────────────────────────────────────────────────
 
 def drive_service():
-    raw = os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]
-    info = json.loads(raw)
-    creds = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
+    """Build a Drive client using an OAuth refresh token (acts as the user).
+
+    Service accounts can't own files in a personal My Drive (they have 0 storage
+    quota), so we use installed-app OAuth: the user authorises once locally, and
+    we store the refresh token as a GitHub secret.
+    """
+    client_id = os.environ["GOOGLE_OAUTH_CLIENT_ID"]
+    client_secret = os.environ["GOOGLE_OAUTH_CLIENT_SECRET"]
+    refresh_token = os.environ["GOOGLE_OAUTH_REFRESH_TOKEN"]
+    creds = Credentials(
+        token=None,
+        refresh_token=refresh_token,
+        client_id=client_id,
+        client_secret=client_secret,
+        token_uri="https://oauth2.googleapis.com/token",
+        scopes=SCOPES,
+    )
     return build("drive", "v3", credentials=creds, cache_discovery=False)
 
 
@@ -140,7 +154,6 @@ def upload_file(svc, parent_id: str, name: str, local_path: Path, mime: str, rep
         # This is fatal: without public perms the PWA cannot read the file via API key.
         raise RuntimeError(
             f"Failed to make {name} publicly readable. The PWA will not be able to load it. "
-            f"Check that the service account has 'Editor' (not just 'Viewer') on the Drive folder. "
             f"Underlying error: {e}"
         ) from e
     return f["id"]

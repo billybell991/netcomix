@@ -68,9 +68,12 @@ export function App() {
         <h1>NetComix</h1>
         <p>Couldn&apos;t load the library.</p>
         <pre>{error}</pre>
-        <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12 }}>
+        <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12, flexWrap: "wrap" }}>
           <button className="back-btn" onClick={() => setRoute({ name: "setup" })} data-testid="goto-setup">
             Open Setup
+          </button>
+          <button className="back-btn" onClick={() => setRoute({ name: "admin" })} data-testid="goto-admin">
+            Open Admin
           </button>
           <button className="back-btn" onClick={() => { setError(null); setReloadKey((k) => k + 1); }}>
             Retry
