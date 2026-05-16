@@ -66,7 +66,7 @@ export function App() {
     return (
       <div className="empty-state" data-testid="error-state">
         <h1>NetComix</h1>
-        <p>Couldn&apos;t load the library.</p>
+        <p>Something went wrong.</p>
         <pre>{error}</pre>
         <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12, flexWrap: "wrap" }}>
           <button className="back-btn" onClick={() => setRoute({ name: "setup" })} data-testid="goto-setup">

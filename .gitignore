@@ -32,5 +32,8 @@ qa-*.png
 qa-*.jpg
 
 # Locally-harvested comic pages (Drive scan produces fileIds; live site fetches from Drive)
-public/comics/savage-tales/
+public/comics/savage-tales/*.jpg
+public/comics/savage-tales/**/*.jpg
+public/comics/savage-tales/**/*.png
+public/comics/savage-tales/**/*.webp
 

@@ -12,6 +12,16 @@
 .empty-state .hint { color: #888; font-size: 14px; max-width: 520px; }
 .empty-state code { background: #1a1a1a; padding: 2px 6px; border-radius: 4px; }
 .empty-state pre { background: #1a1a1a; padding: 12px; border-radius: 6px; max-width: 80vw; overflow: auto; color: #f88; }
+.empty-state .back-btn {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  padding: 10px 18px;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+.empty-state .back-btn:hover { background: rgba(255,255,255,0.2); }
 
 /* Library / Series shared grid */
 .shell {
