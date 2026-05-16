@@ -2,13 +2,6 @@
   "generatedAt": "2026-05-16T23:11:49.686747+00:00",
   "series": [
     {
-      "id": "demo-series",
-      "title": "Demo Series",
-      "cover": "issue-01/page-001.svg",
-      "issueCount": 2,
-      "path": "demo-series"
-    },
-    {
       "id": "red-room",
       "title": "Red Room",
       "cover": "page-001.jpg",

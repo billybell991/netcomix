@@ -489,7 +489,7 @@ def _register_issue(series_map, sid, stitle, sfolder, iid, ilabel, page_count, c
         "cover": cover_file,
         "coverFileId": cover_id,
         "pageCount": page_count,
-        "path": iid,
+        "path": f"{sid}/{iid}",
         "issueFileId": issue_id,
     })
 

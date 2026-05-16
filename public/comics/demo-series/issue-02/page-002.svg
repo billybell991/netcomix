@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1200" width="800" height="1200">
-  <rect width="800" height="1200" fill="#6e3a1a"/>
-  <rect x="40"  y="40"  width="350" height="560" fill="#fff59d" stroke="#000" stroke-width="6"/>
-  <text x="215" y="330" text-anchor="middle" font-family="Arial Black" font-size="40" fill="#222">LEFT</text>
-  <rect x="410" y="40"  width="350" height="560" fill="#b39ddb" stroke="#000" stroke-width="6"/>
-  <text x="585" y="330" text-anchor="middle" font-family="Arial Black" font-size="40" fill="#222">RIGHT</text>
-  <rect x="40"  y="620" width="720" height="540" fill="#a7ffeb" stroke="#000" stroke-width="6"/>
-  <text x="400" y="900" text-anchor="middle" font-family="Arial Black" font-size="60" fill="#222">WIDE BOTTOM</text>
-</svg>

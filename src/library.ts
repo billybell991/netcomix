@@ -1,7 +1,7 @@
 // Library fetch helpers — Drive-backed when configured, static /comics/ fallback otherwise.
 
 import { isDriveConfigured } from "./config";
-import { mediaUrl } from "./drive";
+import { fetchJsonById, mediaUrl } from "./drive";
 import type { IssueIndexEntry, IssueManifest, Library, PageManifest, SeriesEntry, SeriesIndex } from "./types";
 
 // ─── Static-mode (kept for local dev / demo fallback) ──────────────────────
@@ -30,11 +30,17 @@ export async function fetchLibrary(): Promise<Library> {
   return fetchJson<Library>(`${COMICS_BASE}library.json`);
 }
 
-export async function fetchSeries(seriesPath: string, _series?: SeriesEntry): Promise<SeriesIndex> {
+export async function fetchSeries(seriesPath: string, series?: SeriesEntry): Promise<SeriesIndex> {
+  if (series?.seriesFileId && isDriveConfigured()) {
+    return fetchJsonById<SeriesIndex>(series.seriesFileId);
+  }
   return fetchJson<SeriesIndex>(`${COMICS_BASE}${seriesPath}/series.json`);
 }
 
-export async function fetchIssue(issuePath: string, _issue?: IssueIndexEntry): Promise<IssueManifest> {
+export async function fetchIssue(issuePath: string, issue?: IssueIndexEntry): Promise<IssueManifest> {
+  if (issue?.issueFileId && isDriveConfigured()) {
+    return fetchJsonById<IssueManifest>(issue.issueFileId);
+  }
   return fetchJson<IssueManifest>(`${COMICS_BASE}${issuePath}/issue.json`);
 }
 
