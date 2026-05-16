@@ -1,4 +1,12 @@
 {
   "generatedAt": "2026-05-16T12:51:47.418794Z",
-  "series": []
+  "series": [
+    {
+      "id": "demo-series",
+      "title": "Demo Comix",
+      "cover": "page-001.svg",
+      "issueCount": 2,
+      "path": "demo-series"
+    }
+  ]
 }

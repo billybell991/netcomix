@@ -30,6 +30,8 @@ export async function listFolder(folderId: string, mimeFilter?: string): Promise
     q: q.join(" and "),
     fields: "files(id,name,mimeType),nextPageToken",
     pageSize: "1000",
+    supportsAllDrives: "true",
+    includeItemsFromAllDrives: "true",
     key: apiKey(),
   });
   const out: DriveFile[] = [];
@@ -51,6 +53,8 @@ export async function findByName(folderId: string, name: string): Promise<DriveF
     q: `'${folderId}' in parents and name = '${name.replace(/'/g, "\\'")}' and trashed = false`,
     fields: "files(id,name,mimeType)",
     pageSize: "1",
+    supportsAllDrives: "true",
+    includeItemsFromAllDrives: "true",
     key: apiKey(),
   });
   const res = await fetch(`${DRIVE_API}/files?${params}`);
@@ -61,7 +65,7 @@ export async function findByName(folderId: string, name: string): Promise<DriveF
 
 /** URL to download a file's media (binary or text). Suitable for <img src>. */
 export function mediaUrl(fileId: string): string {
-  return `${DRIVE_API}/files/${fileId}?alt=media&key=${encodeURIComponent(apiKey())}`;
+  return `${DRIVE_API}/files/${fileId}?alt=media&supportsAllDrives=true&key=${encodeURIComponent(apiKey())}`;
 }
 
 /** Fetch and parse a JSON file by Drive file id. */

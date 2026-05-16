@@ -368,7 +368,14 @@ def harvest(root_folder_id: str) -> None:
                             issue_id, issue_label, len(page_outs),
                             page_outs[0].file, page_outs[0].fileId, issue_file_id)
 
-    # Write series.json files
+            # Flush manifest after each newly-harvested issue so the PWA sees progress live.
+            _publish_manifest(svc, root_folder_id, series_map)
+
+    # Final flush (also covers the case where every issue was skipped).
+    _publish_manifest(svc, root_folder_id, series_map)
+
+
+def _publish_manifest(svc, root_folder_id: str, series_map: dict) -> None:
     library_series = []
     for sid, s in series_map.items():
         s["issues"].sort(key=lambda i: i["id"])
@@ -390,7 +397,7 @@ def harvest(root_folder_id: str) -> None:
         "series": sorted(library_series, key=lambda s: s["title"]),
     }
     upload_json(svc, root_folder_id, "library.json", library_doc)
-    print(f"\n✓ library.json written ({len(library_series)} series)")
+    print(f"  ✓ manifest flushed ({len(library_series)} series so far)")
 
 
 def _register_issue(series_map, sid, stitle, sfolder, iid, ilabel, page_count, cover_file, cover_id, issue_id):

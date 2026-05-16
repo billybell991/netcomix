@@ -28,6 +28,8 @@ describe("drive", () => {
     const url1 = fetchMock.mock.calls[0][0] as string;
     expect(url1).toContain("%27FOLDER%27+in+parents");
     expect(url1).toContain("trashed+%3D+false");
+    expect(url1).toContain("supportsAllDrives=true");
+    expect(url1).toContain("includeItemsFromAllDrives=true");
   });
 
   it("findByName escapes single quotes", async () => {
@@ -35,6 +37,8 @@ describe("drive", () => {
     await findByName("F", "it's.json");
     const url = fetchMock.mock.calls[0][0] as string;
     expect(url).toContain("it%5C%27s.json"); // backslash-escaped, url-encoded
+    expect(url).toContain("supportsAllDrives=true");
+    expect(url).toContain("includeItemsFromAllDrives=true");
   });
 
   it("fetchJsonById parses JSON", async () => {
