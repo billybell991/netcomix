@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test.describe("NetComix visual journey (watch this)", () => {
   test("full reading flow end-to-end", async ({ page }) => {

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 const CONSOLE_NOISE = [
   "Download the React DevTools",
