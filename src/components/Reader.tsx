@@ -78,7 +78,7 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     const nextPage = issue.pages[position.pageIndex + 1];
     if (!nextPage) return;
     const img = new Image();
-    img.src = pageUrl(issuePath, nextPage.file);
+    img.src = pageUrl(issuePath, nextPage);
   }, [issue, position.pageIndex, issuePath]);
 
   // Long-press timer — useRef so it survives re-renders and doesn't leak.
@@ -191,7 +191,7 @@ export function Reader({ issue, issuePath, onBack }: Props) {
       <div className="reader-stage" ref={stageRef}>
         <img
           className="reader-page-img"
-          src={pageUrl(issuePath, currentPage.file)}
+          src={pageUrl(issuePath, currentPage)}
           alt={`Page ${position.pageIndex + 1}`}
           data-testid="page-image"
           style={{

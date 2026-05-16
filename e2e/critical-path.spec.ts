@@ -138,4 +138,25 @@ test.describe("NetComix critical path", () => {
     await page.goto("/", { waitUntil: "networkidle" });
     expect(Date.now() - start).toBeLessThan(5000);
   });
+
+  test("admin button opens admin view; setup button opens setup view", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("admin-btn").click();
+    await expect(page.getByTestId("admin-view")).toBeVisible();
+    await page.getByTestId("open-setup").click();
+    await expect(page.getByTestId("setup-view")).toBeVisible();
+    // Skip falls back to library (demo mode)
+    await page.getByTestId("setup-skip").click();
+    await expect(page.getByTestId("library-view")).toBeVisible();
+  });
+
+  test("setup form validates partial config", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("admin-btn").click();
+    await page.getByTestId("open-setup").click();
+    // Fill only one Drive field → save should be disabled with an error
+    await page.locator('input').first().fill("only-folder-id");
+    await expect(page.getByTestId("setup-error")).toBeVisible();
+    await expect(page.getByTestId("setup-save")).toBeDisabled();
+  });
 });

@@ -7,14 +7,16 @@ interface Props {
   favorites: string[];
   onSelectSeries: (s: SeriesEntry) => void;
   onFavoritesChanged: (favs: string[]) => void;
+  onOpenAdmin?: () => void;
 }
 
-export function LibraryView({ library, favorites, onSelectSeries, onFavoritesChanged }: Props) {
+export function LibraryView({ library, favorites, onSelectSeries, onFavoritesChanged, onOpenAdmin }: Props) {
   if (!library) {
     return (
       <div className="shell" data-testid="library-loading">
         <div className="shell-header">
           <h1><span className="accent">Net</span>Comix</h1>
+          {onOpenAdmin && <AdminBtn onClick={onOpenAdmin} />}
         </div>
         <div className="shell-body">
           <p style={{ color: "#888", padding: 8 }}>Loading library…</p>
@@ -31,6 +33,7 @@ export function LibraryView({ library, favorites, onSelectSeries, onFavoritesCha
     <div className="shell" data-testid="library-view">
       <div className="shell-header">
         <h1><span className="accent">Net</span>Comix</h1>
+        {onOpenAdmin && <AdminBtn onClick={onOpenAdmin} />}
       </div>
       <div className="shell-body">
         {favSeries.length > 0 && (
@@ -87,7 +90,7 @@ function Grid({
           >
             <img
               className="card-cover"
-              src={coverUrl(s.path, s.cover)}
+              src={coverUrl(s.path, s.cover, s.coverFileId)}
               alt={s.title}
               loading="lazy"
             />
@@ -108,5 +111,19 @@ function Grid({
         );
       })}
     </div>
+  );
+}
+
+function AdminBtn({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      className="back-btn"
+      onClick={onClick}
+      data-testid="admin-btn"
+      aria-label="Admin"
+      style={{ marginLeft: "auto" }}
+    >
+      ⚙
+    </button>
   );
 }

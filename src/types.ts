@@ -12,8 +12,10 @@ export interface Panel {
 }
 
 export interface PageManifest {
-  /** Relative image filename within the issue folder */
+  /** Relative image filename within the issue folder (static-mode lookup) */
   file: string;
+  /** Drive file id (drive-mode lookup) */
+  fileId?: string;
   /** Original image dimensions */
   width: number;
   height: number;
@@ -39,6 +41,10 @@ export interface SeriesEntry {
   issueCount: number;
   /** Folder slug for issues, e.g. "series/batman" */
   path: string;
+  /** Drive file id of cover image (drive-mode) */
+  coverFileId?: string;
+  /** Drive file id of series.json (drive-mode) */
+  seriesFileId?: string;
 }
 
 export interface Library {
@@ -53,6 +59,10 @@ export interface IssueIndexEntry {
   pageCount: number;
   /** Folder slug for pages, e.g. "series/batman/issue-01" */
   path: string;
+  /** Drive file id of cover image (drive-mode) */
+  coverFileId?: string;
+  /** Drive file id of issue.json (drive-mode) */
+  issueFileId?: string;
 }
 
 export interface SeriesIndex {
