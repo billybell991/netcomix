@@ -289,6 +289,13 @@ def harvest(root_folder_id: str) -> None:
             archives.append((c, None))  # parent = root → infer series from name
 
     series_map: dict[str, dict] = {}  # series_id → {entry, issues:[]}
+    flush_counter = 0
+
+    def maybe_flush(force: bool = False) -> None:
+        nonlocal flush_counter
+        flush_counter += 1
+        if force or flush_counter % 3 == 0:
+            _publish_manifest(svc, root_folder_id, series_map)
 
     with tempfile.TemporaryDirectory() as td:
         tdp = Path(td)
@@ -327,6 +334,7 @@ def harvest(root_folder_id: str) -> None:
                                         issue_id, issue_label, page_count, cover_file, cover_node["id"],
                                         existing["id"])
                         print("  ↳ already harvested, skipping")
+                        maybe_flush()
                         continue
 
             # Download archive locally
@@ -369,7 +377,7 @@ def harvest(root_folder_id: str) -> None:
                             page_outs[0].file, page_outs[0].fileId, issue_file_id)
 
             # Flush manifest after each newly-harvested issue so the PWA sees progress live.
-            _publish_manifest(svc, root_folder_id, series_map)
+            maybe_flush(force=True)
 
     # Final flush (also covers the case where every issue was skipped).
     _publish_manifest(svc, root_folder_id, series_map)
