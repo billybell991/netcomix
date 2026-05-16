@@ -21,6 +21,10 @@ const PANEL_PADDING = 0.95; // 5% breathing room
  * scaled so the panel fits (with breathing room).
  */
 export function snapToPanel(panel: Panel, screen: Size): ViewportTransform {
+  // Guard against malformed panels with zero/negative dimensions
+  if (panel.w <= 0 || panel.h <= 0) {
+    return { scale: 1, translateX: 0, translateY: 0 };
+  }
   // Fit by whichever dimension is the binding constraint
   const scaleX = (screen.width / panel.w) * PANEL_PADDING;
   const scaleY = (screen.height / panel.h) * PANEL_PADDING;

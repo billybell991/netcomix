@@ -195,6 +195,9 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
             continue
         if cw * ch > max_area:
             continue
+        # Clamp to image bounds (defensive against malformed contours)
+        if x < 0 or y < 0 or x + cw > w or y + ch > h:
+            continue
         panels.append(
             Panel(
                 x=int(x), y=int(y), w=int(cw), h=int(ch),
@@ -228,6 +231,7 @@ def harvest_issue(archive: Path, series_dir: Path, issue_slug: str, issue_title:
 
     pages = extract_pages(archive, issue_dir)
     if not pages:
+        print(f"  ! Skipping {archive.name}: no pages extracted (corrupt or empty archive?)", file=sys.stderr)
         shutil.rmtree(issue_dir, ignore_errors=True)
         return None
 

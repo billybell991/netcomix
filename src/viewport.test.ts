@@ -30,6 +30,19 @@ describe("snapToPanel", () => {
     expect(Number.isFinite(t.translateX)).toBe(true);
     expect(Number.isFinite(t.translateY)).toBe(true);
   });
+
+  it("guards against zero-dimension panels (no Infinity/NaN)", () => {
+    const zero = { x: 0, y: 0, w: 0, h: 0, centerX: 0, centerY: 0 };
+    const t = snapToPanel(zero, screen);
+    expect(Number.isFinite(t.scale)).toBe(true);
+    expect(t.scale).toBeGreaterThan(0);
+  });
+
+  it("guards against negative-dimension panels", () => {
+    const neg = { x: 0, y: 0, w: -10, h: -10, centerX: 0, centerY: 0 };
+    const t = snapToPanel(neg, screen);
+    expect(Number.isFinite(t.scale)).toBe(true);
+  });
 });
 
 describe("fitPage", () => {

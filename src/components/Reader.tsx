@@ -81,6 +81,13 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     img.src = pageUrl(issuePath, nextPage.file);
   }, [issue, position.pageIndex, issuePath]);
 
+  // Long-press timer — useRef so it survives re-renders and doesn't leak.
+  // MUST be declared before any early return to satisfy Rules of Hooks.
+  const pressTimerRef = useRef<number | undefined>(undefined);
+  useEffect(() => () => {
+    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+  }, []);
+
   if (!issue || !currentPage) {
     return (
       <div className="empty-state" data-testid="reader-loading">
@@ -144,16 +151,23 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     }
   };
 
-  let pressTimer: number | undefined;
   const onPointerDown = () => {
     if (settings.hudTrigger === "center-tap") return;
-    pressTimer = window.setTimeout(() => setHudOpen(true), 550);
+    pressTimerRef.current = window.setTimeout(() => setHudOpen(true), 550);
   };
-  const onPointerUp = () => { if (pressTimer) clearTimeout(pressTimer); };
+  const onPointerUp = () => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = undefined;
+    }
+  };
 
-  const bgStyle = settings.colorMatchBackground && currentPage.dominantColor
+  const safeColor = /^#[0-9a-fA-F]{6}$/.test(currentPage.dominantColor ?? "")
+    ? currentPage.dominantColor!
+    : "#222";
+  const bgStyle = settings.colorMatchBackground && /^#[0-9a-fA-F]{6}$/.test(currentPage.dominantColor ?? "")
     ? {
-        background: `radial-gradient(ellipse at center, ${currentPage.dominantColor}55, #000 75%)`,
+        background: `radial-gradient(ellipse at center, ${safeColor}55, #000 75%)`,
       }
     : { background: "#000" };
 

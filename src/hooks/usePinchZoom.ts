@@ -85,6 +85,10 @@ export function usePinchZoom(stageRef: React.RefObject<HTMLDivElement | null>): 
       el.removeEventListener("pointermove", onMove);
       el.removeEventListener("pointerup", onUp);
       el.removeEventListener("pointercancel", onUp);
+      pointers.current.clear();
+      startDist.current = 0;
+      startTransform.current = null;
+      startMid.current = null;
     };
   }, [stageRef, transform]);
 
