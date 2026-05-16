@@ -30,10 +30,7 @@ export async function fetchLibrary(): Promise<Library> {
   return fetchJson<Library>(`${COMICS_BASE}library.json`);
 }
 
-export async function fetchSeries(seriesPath: string, series?: SeriesEntry): Promise<SeriesIndex> {
-  if (series?.seriesFileId && isDriveConfigured()) {
-    return fetchJsonById<SeriesIndex>(series.seriesFileId);
-  }
+export async function fetchSeries(seriesPath: string, _series?: SeriesEntry): Promise<SeriesIndex> {
   return fetchJson<SeriesIndex>(`${COMICS_BASE}${seriesPath}/series.json`);
 }
 
