@@ -23,6 +23,7 @@ jobs:
     timeout-minutes: 360
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
 
@@ -64,4 +65,11 @@ jobs:
               echo "push attempt $i failed, retrying..."
               sleep 3
             done
+            echo "trigger_deploy=true" >> "$GITHUB_ENV"
           fi
+
+      - name: Trigger deploy workflow
+        if: env.trigger_deploy == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run deploy.yml --ref main
