@@ -69,9 +69,9 @@ describe("snap-loop", () => {
   });
 
   it("prev from full-page goes to previous page's last panel", () => {
-    const issue = makeIssue([3, 0]);
-    const p = prevPosition({ pageIndex: 1, panelIndex: -1 }, issue);
-    expect(p).toEqual({ pageIndex: 0, panelIndex: 2 });
+    const issue = makeIssue([0, 3, 0]);
+    const p = prevPosition({ pageIndex: 2, panelIndex: -1 }, issue);
+    expect(p).toEqual({ pageIndex: 1, panelIndex: 2 });
   });
 
   it("prev from full-page when previous has no panels", () => {
