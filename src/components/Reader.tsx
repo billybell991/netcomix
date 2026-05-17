@@ -180,6 +180,12 @@ export function Reader({ issue, issuePath, onBack }: Props) {
         onClick={(e) => { e.stopPropagation(); goNext(); }}
       >›</button>
 
+      <div className="page-counter" data-testid="page-counter">
+        {position.panelIndex >= 0
+          ? `Page ${position.pageIndex + 1} of ${totalPages} · Panel ${position.panelIndex + 1} of ${currentPage.panels.length}`
+          : `Page ${position.pageIndex + 1} of ${totalPages}`}
+      </div>
+
       {hudOpen && (
         <HudOverlay
           title={issue.title}

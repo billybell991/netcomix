@@ -254,6 +254,23 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                     prev = e
                 if rh - prev >= min_panel_h:
                     strips.append((prev, rh))
+                # Shallow fallback: subtle-border pages (e.g. dark backgrounds) have
+                # interior gutters at higher ink fractions; try a more permissive
+                # threshold when the initial scan didn't produce a useful split.
+                # Applies at depth 0 (initial page split) and depth 1 (first sub-strips)
+                # to handle gutters that live one level inside the initial margins.
+                if len(strips) < 2 and depth <= 1:
+                    runs2 = find_gutter_runs(row_ink, max(ink_ratio, 0.30), min_gutter_v)
+                    strips2: List[Tuple[int, int]] = []
+                    prev2 = 0
+                    for s, e in runs2:
+                        if s - prev2 >= min_panel_h:
+                            strips2.append((prev2, s))
+                        prev2 = e
+                    if rh - prev2 >= min_panel_h:
+                        strips2.append((prev2, rh))
+                    if len(strips2) > len(strips):
+                        strips = strips2
                 if len(strips) >= 2:
                     out: List[Tuple[int, int, int, int]] = []
                     for s, e in strips:
@@ -280,6 +297,20 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                     prev = e
                 if rw - prev >= min_panel_w:
                     strips_v.append((prev, rw))
+                # Shallow fallback (vertical axis): only at depth 0 — applying it
+                # at depth 1 risks false vertical splits within panel artwork.
+                if len(strips_v) < 2 and depth == 0:
+                    runs2_v = find_gutter_runs(col_ink, max(ink_ratio, 0.30), min_gutter_h)
+                    strips2_v: List[Tuple[int, int]] = []
+                    prev2_v = 0
+                    for s, e in runs2_v:
+                        if s - prev2_v >= min_panel_w:
+                            strips2_v.append((prev2_v, s))
+                        prev2_v = e
+                    if rw - prev2_v >= min_panel_w:
+                        strips2_v.append((prev2_v, rw))
+                    if len(strips2_v) > len(strips_v):
+                        strips_v = strips2_v
                 if len(strips_v) >= 2:
                     out = []
                     for s, e in strips_v:
@@ -341,6 +372,71 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
             )
         )
 
+    # ── Pass 1.5: split bordered panels that share a border line ──────────
+    # Projection-cut can't detect gutters inside thick black borders because the
+    # shared border column has 95–100% ink (high, not low).  Instead we look for
+    # interior columns/rows with *very* high ink (>95%) that span the full
+    # height/width of the detected panel — those are the shared border lines.
+    # Guard: only try if the top and bottom rows of the panel are themselves
+    # high-ink (≥80%), confirming the panel has a rectangular border frame.
+    def _split_at_borders(px0: int, py0: int, px1: int, py1: int) -> List[Tuple[int, int, int, int]]:
+        region = content[py0:py1, px0:px1].astype(np.float32)
+        rh, rw = region.shape
+        border_thr = 0.95  # column/row must be ≥95% dark to count as a border line
+
+        def _interior_dividers(ink_1d: np.ndarray, length: int) -> List[Tuple[int, int]]:
+            edge = max(int(length * 0.05), 8)
+            divs: List[Tuple[int, int]] = []
+            in_run, start = False, 0
+            for i, v in enumerate(ink_1d):
+                if v > border_thr:
+                    if not in_run:
+                        start = i
+                        in_run = True
+                else:
+                    if in_run:
+                        if start > edge and i < length - edge:
+                            divs.append((start, i))
+                        in_run = False
+            if in_run and start > edge and length - start > edge:
+                divs.append((start, length))
+            return divs
+
+        # Vertical split (panels side by side with shared vertical border)
+        col_ink = region.sum(axis=0) / max(rh, 1)
+        divs_v = _interior_dividers(col_ink, rw)
+        if divs_v:
+            xs = [px0] + [px0 + (s + e) // 2 for s, e in divs_v] + [px1]
+            return [(xs[i], py0, xs[i + 1], py1) for i in range(len(xs) - 1)]
+
+        # Horizontal split (panels stacked with shared horizontal border)
+        row_ink = region.sum(axis=1) / max(rw, 1)
+        divs_h = _interior_dividers(row_ink, rh)
+        if divs_h:
+            ys = [py0] + [py0 + (s + e) // 2 for s, e in divs_h] + [py1]
+            return [(px0, ys[i], px1, ys[i + 1]) for i in range(len(ys) - 1)]
+
+        return [(px0, py0, px1, py1)]
+
+    panels_split: List[Panel] = []
+    for p in panels:
+        # Only attempt if the panel is wide enough to plausibly contain 2+ side-by-side
+        # bordered panels, AND has thick border rows at top and bottom (≥80% ink).
+        is_wide = p.w > w * 0.40
+        is_tall = p.h > h * 0.40
+        if is_wide or is_tall:
+            top_ink = float(content[p.y:p.y + 15, p.x:p.x + p.w].mean())
+            if top_ink > 0.85:
+                sub_rects = _split_at_borders(p.x, p.y, p.x + p.w, p.y + p.h)
+                if len(sub_rects) > 1:
+                    for (sx0, sy0, sx1, sy1) in sub_rects:
+                        cw, ch = sx1 - sx0, sy1 - sy0
+                        if cw >= min_panel_w and ch >= min_panel_h:
+                            panels_split.append(Panel(sx0, sy0, cw, ch, sx0 + cw // 2, sy0 + ch // 2))
+                    continue  # replaced by sub-panels
+        panels_split.append(p)
+    panels = panels_split
+
     # ── Pass 2: catalog / gallery / splash heuristics ────────────────────
     # Western comics: 3-6 panels is typical, 9 is a hard practical ceiling.
     if len(panels) > 9:
@@ -353,7 +449,7 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
         # panel sizes for dramatic pacing; catalog grids are suspiciously
         # regular.  CV = σ/μ — low CV means all panels are the same size.
         cv = float(areas.std() / areas.mean()) if areas.mean() > 0 else 0.0
-        uniform_threshold = 0.25 if len(panels) >= 6 else 0.15
+        uniform_threshold = 0.15
         if cv < uniform_threshold:
             panels = []  # looks like a thumbnail grid / catalog page
 

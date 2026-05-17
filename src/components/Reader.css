@@ -58,6 +58,22 @@
 /* Side positions */
 .ghost-btn.side-left    { top: 50%; left: 12px; transform: translateY(-50%); }
 .ghost-btn.side-right   { top: 50%; right: 12px; transform: translateY(-50%); }
+
+/* Page counter */
+.page-counter {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  color: rgba(255,255,255,0.55);
+  font-size: 11px;
+  font-family: system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
 .ghost-btn.side-left:active, .ghost-btn.side-right:active { transform: translateY(-50%) scale(0.92); }
 
 /* HUD overlay */
