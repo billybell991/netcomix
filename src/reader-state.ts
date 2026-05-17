@@ -25,7 +25,8 @@ export function nextPosition(pos: ReaderPosition, issue: IssueManifest): ReaderP
   if (!page) return null;
 
   if (pos.panelIndex === -1) {
-    if (page.panels.length > 0) {
+    // Cover (page 0) is always a splash — never snap into its panels.
+    if (pos.pageIndex > 0 && page.panels.length > 0) {
       return { pageIndex: pos.pageIndex, panelIndex: 0 };
     }
     const nextPage = pos.pageIndex + 1;
@@ -58,7 +59,8 @@ export function prevPosition(pos: ReaderPosition, issue: IssueManifest): ReaderP
   const prevPage = pos.pageIndex - 1;
   if (prevPage < 0) return null;
   const page = issue.pages[prevPage];
-  if (page.panels.length > 0) {
+  // Cover (page 0) is always a splash — don't land on its panels when going back.
+  if (prevPage > 0 && page.panels.length > 0) {
     return { pageIndex: prevPage, panelIndex: page.panels.length - 1 };
   }
   return { pageIndex: prevPage, panelIndex: -1 };
