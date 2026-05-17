@@ -4,7 +4,9 @@ const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) throw new Error("DATABASE_URL env var required");
 
 export const sql = postgres(DATABASE_URL, {
-  ssl: process.env.NODE_ENV === "production" ? "require" : false,
+  // Railway internal connections (postgres.railway.internal) don't need SSL.
+  // External connections (public proxy URL) do.
+  ssl: DATABASE_URL.includes("railway.internal") ? false : { rejectUnauthorized: false },
   max: 10,
 });
 
