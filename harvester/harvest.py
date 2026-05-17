@@ -162,9 +162,16 @@ def extract_pages(archive: Path, dest_dir: Path) -> List[Path]:
 # ---------------------------------------------------------------------------
 
 def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, int, List[Panel], Optional[str]]:
-    """Return (width, height, panels, dominantColor). Panels are sorted into
-    reading order (top-to-bottom, left-to-right). If OpenCV is unavailable,
-    returns no panels (full-page-only)."""
+    """Return (width, height, panels, dominantColor).
+
+    Uses a recursive projection-cut algorithm: a comic page is split by finding
+    horizontal then vertical gutters (bands of mostly-white pixels). This is
+    robust to mixed layouts — e.g. a row of two panels above a single wide
+    panel — which contour-based approaches struggle with because the two top
+    panels merge across thin gutters when morphologically closed.
+
+    If OpenCV is unavailable, returns no panels (full-page-only).
+    """
     if not HAS_CV:
         if HAS_PIL:
             with Image.open(image_path) as im:
@@ -177,39 +184,200 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     h, w = img.shape[:2]
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # Threshold: white gutters → black, content → white (inverted)
-    _, thresh = cv2.threshold(gray, gutter_threshold, 255, cv2.THRESH_BINARY_INV)
-    # Morphological close to merge speech bubbles into their parent panels
-    kernel = np.ones((5, 5), np.uint8)
-    closed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
+    # content_mask: 1 where there's ink/art, 0 where the page is white (gutter).
+    content = (gray < gutter_threshold).astype(np.uint8)
 
-    contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Knobs (relative to page size so they scale with resolution):
+    #   min_gutter:    how many consecutive near-empty rows/cols count as a gutter
+    #   min_panel_w/h: smallest plausible panel
+    #   ink_ratio:     a row/col counts as "gutter" if fewer than this fraction
+    #                  of its pixels are ink. Needs to be loose enough to
+    #                  forgive the panel-border lines that bracket the gutter
+    #                  (a 2–3 px black line on a 1200 px wide row is ~0.2% ink
+    #                  per line, but anti-aliasing + speech-bubble tails push
+    #                  real gutters into the 3–8% range).
+    #   bbox_ink_ratio: tighter threshold for trimming the outer page margins
+    #                  so we don't lop legitimate panel-border ink off the bbox.
+    min_gutter_v = max(int(h * 0.004), 5)   # horizontal gutter (between rows)
+    min_gutter_h = max(int(w * 0.004), 5)   # vertical gutter (between cols)
+    min_panel_w = int(w * 0.18)
+    min_panel_h = int(h * 0.10)
+    ink_ratio = 0.10
+    bbox_ink_ratio = 0.02
 
-    min_w = int(w * 0.12)
-    min_h = int(h * 0.08)
-    max_area = w * h * 0.95  # reject "the whole page is one panel" noise
+    def find_gutter_runs(profile: np.ndarray, threshold: float, min_run: int) -> List[Tuple[int, int]]:
+        """Return list of (start, end_exclusive) index ranges where profile < threshold
+        for at least `min_run` consecutive samples."""
+        empty = profile < threshold
+        runs: List[Tuple[int, int]] = []
+        i = 0
+        n = len(empty)
+        while i < n:
+            if empty[i]:
+                j = i
+                while j < n and empty[j]:
+                    j += 1
+                if j - i >= min_run:
+                    runs.append((i, j))
+                i = j
+            else:
+                i += 1
+        return runs
+
+    def split(x0: int, y0: int, x1: int, y1: int, axis: str, depth: int) -> List[Tuple[int, int, int, int]]:
+        """Recursively split a region. axis is the *preferred* axis to try first
+        ('h' = look for horizontal gutters to make rows; 'v' = vertical gutters
+        to make columns). Returns a list of leaf rectangles."""
+        if depth > 8:  # safety bound — comics rarely nest more than a few levels
+            return [(x0, y0, x1, y1)]
+        region = content[y0:y1, x0:x1]
+        rh, rw = region.shape
+        if rh < min_panel_h or rw < min_panel_w:
+            return [(x0, y0, x1, y1)]
+
+        # Try the preferred axis first; if that yields nothing, try the other.
+        for try_axis in (axis, "v" if axis == "h" else "h"):
+            if try_axis == "h":
+                # Horizontal gutters → bands of empty rows → row split
+                row_ink = region.sum(axis=1) / rw  # fraction of ink per row
+                runs = find_gutter_runs(row_ink, ink_ratio, min_gutter_v)
+                # Convert gutter runs into row strips (skip strips that are too short)
+                strips: List[Tuple[int, int]] = []
+                prev = 0
+                for s, e in runs:
+                    if s - prev >= min_panel_h:
+                        strips.append((prev, s))
+                    prev = e
+                if rh - prev >= min_panel_h:
+                    strips.append((prev, rh))
+                if len(strips) >= 2:
+                    out: List[Tuple[int, int, int, int]] = []
+                    for s, e in strips:
+                        # Tighten this strip's horizontal extent to where its ink lives
+                        sub = region[s:e, :]
+                        col_ink = sub.sum(axis=0) / max(sub.shape[0], 1)
+                        nonempty = np.where(col_ink >= bbox_ink_ratio)[0]
+                        if nonempty.size == 0:
+                            continue
+                        cx0 = int(nonempty[0])
+                        cx1 = int(nonempty[-1] + 1)
+                        out.extend(split(x0 + cx0, y0 + s, x0 + cx1, y0 + e, "v", depth + 1))
+                    if out:
+                        return out
+            else:
+                # Vertical gutters → bands of empty cols → column split
+                col_ink = region.sum(axis=0) / rh
+                runs = find_gutter_runs(col_ink, ink_ratio, min_gutter_h)
+                strips_v: List[Tuple[int, int]] = []
+                prev = 0
+                for s, e in runs:
+                    if s - prev >= min_panel_w:
+                        strips_v.append((prev, s))
+                    prev = e
+                if rw - prev >= min_panel_w:
+                    strips_v.append((prev, rw))
+                if len(strips_v) >= 2:
+                    out = []
+                    for s, e in strips_v:
+                        sub = region[:, s:e]
+                        row_ink = sub.sum(axis=1) / max(sub.shape[1], 1)
+                        nonempty = np.where(row_ink >= bbox_ink_ratio)[0]
+                        if nonempty.size == 0:
+                            continue
+                        cy0 = int(nonempty[0])
+                        cy1 = int(nonempty[-1] + 1)
+                        out.extend(split(x0 + s, y0 + cy0, x0 + e, y0 + cy1, "h", depth + 1))
+                    if out:
+                        return out
+
+        # No split possible on either axis — this region is a leaf panel.
+        return [(x0, y0, x1, y1)]
+
+    # Tighten the initial bounding box to the page's inked region (drops the
+    # outer white margin so the first split doesn't mistake margin for gutter).
+    row_ink_all = content.sum(axis=1) / w
+    col_ink_all = content.sum(axis=0) / h
+    rows_with_ink = np.where(row_ink_all >= bbox_ink_ratio)[0]
+    cols_with_ink = np.where(col_ink_all >= bbox_ink_ratio)[0]
+    if rows_with_ink.size and cols_with_ink.size:
+        y0 = int(rows_with_ink[0])
+        y1 = int(rows_with_ink[-1] + 1)
+        x0 = int(cols_with_ink[0])
+        x1 = int(cols_with_ink[-1] + 1)
+    else:
+        x0, y0, x1, y1 = 0, 0, w, h
+
+    rects = split(x0, y0, x1, y1, "h", 0)
+
+    page_area = w * h
+
+    # ── Pass 1: basic size + aspect-ratio filters ─────────────────────────
     panels: List[Panel] = []
-    for cnt in contours:
-        x, y, cw, ch = cv2.boundingRect(cnt)
-        if cw < min_w or ch < min_h:
+    for (rx0, ry0, rx1, ry1) in rects:
+        cw = rx1 - rx0
+        ch = ry1 - ry0
+        # Must meet minimum dimension thresholds.
+        if cw < min_panel_w or ch < min_panel_h:
             continue
-        if cw * ch > max_area:
+        # Must be at least 8 % of total page area (kills thumbnail-sized boxes).
+        if (cw * ch) / page_area < 0.08:
             continue
-        # Clamp to image bounds (defensive against malformed contours)
-        if x < 0 or y < 0 or x + cw > w or y + ch > h:
+        # Sane aspect ratio: 0.15 ≤ w/h ≤ 6.0  (drops degenerate slivers).
+        aspect = cw / ch if ch > 0 else 0
+        if not (0.15 <= aspect <= 6.0):
+            continue
+        # Drop a single rect that covers the whole inked area — the page is a
+        # splash and the reader should show the full page instead.
+        if cw >= (x1 - x0) * 0.97 and ch >= (y1 - y0) * 0.97:
             continue
         panels.append(
             Panel(
-                x=int(x), y=int(y), w=int(cw), h=int(ch),
-                centerX=int(x + cw // 2), centerY=int(y + ch // 2),
+                x=int(rx0), y=int(ry0), w=int(cw), h=int(ch),
+                centerX=int(rx0 + cw // 2), centerY=int(ry0 + ch // 2),
             )
         )
 
-    # Sort: row by row. Group rows by y-bucket (10% of page height).
-    bucket = max(int(h * 0.1), 20)
+    # ── Pass 2: catalog / gallery / splash heuristics ────────────────────
+    # Western comics: 3-6 panels is typical, 9 is a hard practical ceiling.
+    if len(panels) > 9:
+        panels = []
+
+    if len(panels) >= 2:
+        areas = np.array([p.w * p.h for p in panels], dtype=float)
+
+        # Uniformity (coefficient of variation): real comic pages have varied
+        # panel sizes for dramatic pacing; catalog grids are suspiciously
+        # regular.  CV = σ/μ — low CV means all panels are the same size.
+        cv = float(areas.std() / areas.mean()) if areas.mean() > 0 else 0.0
+        uniform_threshold = 0.25 if len(panels) >= 6 else 0.15
+        if cv < uniform_threshold:
+            panels = []  # looks like a thumbnail grid / catalog page
+
+        # Geometric grid check: if panel centres snap to a rows×cols grid,
+        # it's almost certainly a gallery layout, not a comic layout.
+        if panels and len(panels) >= 4:
+            tol = 0.12
+            bin_x = lambda p: round(p.centerX / (w * tol))
+            bin_y = lambda p: round(p.centerY / (h * tol))
+            n_cols = len(set(bin_x(p) for p in panels))
+            n_rows = len(set(bin_y(p) for p in panels))
+            if n_rows >= 2 and n_cols >= 2 and n_rows * n_cols == len(panels):
+                panels = []  # regular grid → not comic panels
+
+        # Total coverage: if surviving panels cover less than 35 % of the page,
+        # there's too much non-panel content (text blocks, blank space) — treat
+        # as a splash.
+        if panels:
+            total_coverage = float(areas.sum()) / page_area
+            if total_coverage < 0.35:
+                panels = []
+
+    # Sort into reading order (top-to-bottom, left-to-right).
+    bucket = max(int(h * 0.08), 20)
     panels.sort(key=lambda p: (p.y // bucket, p.x))
 
-    # Dominant color (downsample → k-means free: just take mean of bright pixels)
+    # Dominant color (mean of a downsampled copy — cheap and good enough for
+    # the reader's letterbox background tint).
     small = cv2.resize(img, (50, 75))
     mean = small.reshape(-1, 3).mean(axis=0)
     b, g, r = int(mean[0]), int(mean[1]), int(mean[2])

@@ -253,18 +253,40 @@ def detect_panels(image_path: Path) -> tuple[int, int, list[Panel], str]:
         ph = min(h, y + ch + pad_y) - py
         panels.append(Panel(px, py, pw, ph, px + pw // 2, py + ph // 2))
 
-    # Splash detection: pages where we found <2 real panels, or where the panels
-    # cover less than 55% of the page area, are likely covers / TOC / credits /
-    # splash pages. Show them as full-page rather than awkwardly zoomed in.
+    # ── Whole-page heuristics: reject catalog / gallery / splash pages ───────
     page_area = w * h
-    total_area = sum(p.w * p.h for p in panels)
-    if len(panels) < 2 or (page_area > 0 and total_area / page_area < 0.55):
+
+    # Hard cap: Western comics rarely exceed 9 panels per page.
+    if len(panels) > 9:
         panels = []
 
-    # Reading order: top-to-bottom, left-to-right — but with overlap awareness
-    # so a tall left-column panel reads before a top-right stacked panel.
-    # Rule: if two panels' y-ranges overlap by >40% of the shorter panel's
-    # height, they're in the "same row" and we order by x; otherwise by y_top.
+    if len(panels) >= 2:
+        areas = np.array([p.w * p.h for p in panels], dtype=float)
+
+        # Uniformity (CV = σ/μ): real comic pages have varied panel sizes for
+        # dramatic pacing; catalog/thumbnail grids are suspiciously uniform.
+        cv = float(areas.std() / areas.mean()) if areas.mean() > 0 else 0.0
+        uniform_threshold = 0.25 if len(panels) >= 6 else 0.15
+        if cv < uniform_threshold:
+            panels = []  # thumbnail grid or uniform layout → treat as splash
+
+        # Geometric grid check: if centres snap to a rows×cols grid, it's a
+        # gallery layout, not comic panels.
+        if panels and len(panels) >= 4:
+            tol = 0.12
+            n_cols = len(set(round(p.centerX / (w * tol)) for p in panels))
+            n_rows = len(set(round(p.centerY / (h * tol)) for p in panels))
+            if n_rows >= 2 and n_cols >= 2 and n_rows * n_cols == len(panels):
+                panels = []  # regular grid → not comic panels
+
+        # Coverage: if panels cover <35% of the page there's too little art.
+        if panels:
+            areas = np.array([p.w * p.h for p in panels], dtype=float)
+            if page_area > 0 and float(areas.sum()) / page_area < 0.35:
+                panels = []
+
+    # Reading order: top-to-bottom, left-to-right with overlap awareness so a
+    # tall left-column panel reads before a top-right stacked panel.
     import functools
 
     def cmp(a: Panel, b: Panel) -> int:
