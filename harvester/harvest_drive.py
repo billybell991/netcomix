@@ -389,8 +389,11 @@ def harvest(root_folder_id: str) -> None:
 
             # Detect panels + upload pages
             page_outs: list[PageOut] = []
-            for page_path in pages:
+            for idx, page_path in enumerate(pages):
                 w, h, panels, dom = detect_panels(page_path)
+                # Cover (first page, index 0) is always a full-page splash — never panel-snap.
+                if idx == 0:
+                    panels = []
                 page_file_id = upload_file(svc, issue_folder_id, page_path.name, page_path, "image/jpeg")
                 page_outs.append(PageOut(
                     file=page_path.name,

@@ -92,8 +92,11 @@ def harvest_local(archive: Path) -> None:
         sys.exit("no pages extracted")
 
     page_records = []
-    for p in pages:
+    for idx, p in enumerate(pages):
         w, h, panels, dom = detect_panels(p)
+        # Cover (first page, index 0) is always a full-page splash — never panel-snap.
+        if idx == 0:
+            panels = []
         page_records.append({
             "file": p.name,
             "width": w,
