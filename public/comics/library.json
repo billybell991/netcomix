@@ -1,23 +1,19 @@
-﻿{
-  "generatedAt": "2026-05-17T10:27:15.976769+00:00",
+{
+  "generatedAt": "2026-05-17T13:54:14.553561+00:00",
   "series": [
     {
       "id": "red-room",
       "title": "Red Room",
       "cover": "page-001.jpg",
-      "coverFileId": "1Gd8tDr7VS0TzJLGkEBO9BEoLBLcJ0a7x",
-      "issueCount": 4,
-      "path": "red-room",
-      "seriesFileId": "14baAZSOkt0v0Csc6yxvwm4ne4yrkZsH3"
+      "issueCount": 1,
+      "path": "red-room"
     },
     {
       "id": "savage-tales",
       "title": "Savage Tales",
       "cover": "page-001.jpg",
-      "coverFileId": "1vssf71e7BZ7TuNM10hX8ztD7lCY6E0nl",
       "issueCount": 8,
-      "path": "savage-tales",
-      "seriesFileId": "1dZ0M9qeP8rxI0fGHBNSKmKx_HRp6GORl"
+      "path": "savage-tales"
     },
     {
       "id": "the-fourth-man",
@@ -25,8 +21,7 @@
       "cover": "page-001.jpg",
       "coverFileId": "1E-fxkFhj5Wiln9tayoAVIQ_GNhVFww9j",
       "issueCount": 2,
-      "path": "the-fourth-man",
-      "seriesFileId": "1Px2WcKZhagwbxWhssrcYAP-WN5fc0qth"
+      "path": "the-fourth-man"
     },
     {
       "id": "the-good-asian",
@@ -34,8 +29,7 @@
       "cover": "page-001.jpg",
       "coverFileId": "1qSljrvRg278yTjmCfF7lDxVsNkTIkoq1",
       "issueCount": 8,
-      "path": "the-good-asian",
-      "seriesFileId": "1DBMzvsEhDDx8Iu-LnKK5iSoYcsU09apw"
+      "path": "the-good-asian"
     },
     {
       "id": "the-nice-house-on-the-lake",
@@ -43,8 +37,7 @@
       "cover": "page-001.jpg",
       "coverFileId": "1g1XvAVGng2csqcAv8q9ddAVqeAV9HUkz",
       "issueCount": 6,
-      "path": "the-nice-house-on-the-lake",
-      "seriesFileId": "15Rb9JV7hhjjTkicwiuZ7QItUZXJ0kKfw"
+      "path": "the-nice-house-on-the-lake"
     }
   ]
 }
