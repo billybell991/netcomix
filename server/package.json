@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20.9.0" },
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsup src/index.ts --format esm --out-dir dist --clean",
@@ -12,9 +14,11 @@
   "dependencies": {
     "@hono/node-server": "^1.13.7",
     "hono": "^4.7.11",
+    "pg": "^8.20.0",
     "postgres": "^3.4.5"
   },
   "devDependencies": {
+    "@types/pg": "^8.20.0",
     "tsup": "^8.4.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.3"

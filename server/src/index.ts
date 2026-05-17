@@ -1,7 +1,7 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { db, migrate } from "./db.js";
+import { db, migrate, pool } from "./db.js";
 
 const app = new Hono();
 
@@ -71,6 +71,17 @@ app.get("/api/issue/:id", async (c) => {
   } catch (e) {
     console.error("GET /api/issue/:id", e);
     return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// ─── Admin: DB connection test ────────────────────────────────────────────────
+app.get("/api/admin/dbtest", async (c) => {
+  try {
+    const { rows } = await pool.query("SELECT 1 AS val");
+    return c.json({ ok: true, val: rows[0]?.val });
+  } catch (e: any) {
+    console.error("GET /api/admin/dbtest", e);
+    return c.json({ ok: false, error: e.message, code: e.code }, 500);
   }
 });
 
