@@ -165,7 +165,136 @@ def harvest_local(archive: Path) -> None:
     print(f"✓ wrote {PUBLIC_COMICS / 'library.json'} ({len(library_series)} series)")
 
 
+def harvest_folder(src_folder: Path) -> None:
+    """Process a pre-extracted folder of page images (no archive unpacking needed).
+
+    The folder name is used as-is for the issue_id.  If an issue.json already
+    exists in the folder we read title / series from it; otherwise we fall back
+    to parsing the folder name like an archive stem.
+    """
+    if not src_folder.is_dir():
+        sys.exit(f"not a directory: {src_folder}")
+
+    # Derive ids / titles -------------------------------------------------------
+    existing_json = src_folder / "issue.json"
+    if existing_json.exists():
+        meta = json.loads(existing_json.read_text(encoding="utf-8"))
+        issue_id   = meta.get("id",     slugify(src_folder.name))
+        series_id  = meta.get("series", slugify(src_folder.name.split("-")[0]))
+        issue_label = meta.get("title",  src_folder.name)
+        # Guess a human-readable series title from the series_id
+        series_title = series_id.replace("-", " ").title()
+    else:
+        series_title, issue_label = parse_archive_name(src_folder.name + ".cbr")
+        series_id  = slugify(series_title)
+        issue_id   = slugify(src_folder.name)
+
+    print(f">> {src_folder.name}/")
+    print(f"  series={series_id}  issue={issue_id}")
+
+    # Collect page images in name order -----------------------------------------
+    src_pages = sorted(
+        (p for p in src_folder.iterdir() if p.suffix.lower() in PAGE_EXTS),
+        key=lambda p: p.name.lower(),
+    )
+    if not src_pages:
+        sys.exit("no image files found in folder")
+
+    # Copy to public/comics/<series>/<issue>/ -----------------------------------
+    series_dir = PUBLIC_COMICS / series_id
+    issue_dir  = series_dir / issue_id
+    if issue_dir.exists():
+        shutil.rmtree(issue_dir)
+    issue_dir.mkdir(parents=True, exist_ok=True)
+
+    dest_pages: list[Path] = []
+    for i, src in enumerate(src_pages, 1):
+        dest = issue_dir / f"page-{i:03d}.jpg"
+        _write_jpeg(src.read_bytes(), dest)
+        dest_pages.append(dest)
+
+    # Run detect_panels on each dest page ---------------------------------------
+    page_records = []
+    for idx, p in enumerate(dest_pages):
+        w, h, panels, dom = detect_panels(p)
+        if idx == 0:
+            panels = []   # cover is always full-page
+        page_records.append({
+            "file": p.name,
+            "width": w,
+            "height": h,
+            "panels": [{"x": pn.x, "y": pn.y, "w": pn.w, "h": pn.h,
+                        "centerX": pn.centerX, "centerY": pn.centerY} for pn in panels],
+            "dominantColor": dom,
+        })
+        print(f"  -> {p.name}: {len(panels)} panels")
+
+    issue_doc = {
+        "id":     issue_id,
+        "title":  issue_label,
+        "series": series_id,
+        "cover":  dest_pages[0].name,
+        "pages":  page_records,
+    }
+    (issue_dir / "issue.json").write_text(json.dumps(issue_doc, indent=2), encoding="utf-8")
+
+    # Cover at series level -----------------------------------------------------
+    series_cover = series_dir / dest_pages[0].name
+    shutil.copy2(dest_pages[0], series_cover)
+
+    # series.json (no Drive IDs — reader uses static files) ---------------------
+    issues_meta = []
+    for sub in sorted(series_dir.iterdir()):
+        if not sub.is_dir():
+            continue
+        ij = sub / "issue.json"
+        if not ij.exists():
+            continue
+        d = json.loads(ij.read_text(encoding="utf-8"))
+        issues_meta.append({
+            "id":        d["id"],
+            "title":     d["title"],
+            "cover":     d["cover"],
+            "pageCount": len(d["pages"]),
+            "path":      f"{series_id}/{d['id']}",
+        })
+    series_doc = {"id": series_id, "title": series_title, "issues": issues_meta}
+    (series_dir / "series.json").write_text(json.dumps(series_doc, indent=2), encoding="utf-8")
+    print(f"✓ wrote series.json ({len(issues_meta)} issue(s))")
+
+    # library.json --------------------------------------------------------------
+    library_series = []
+    for sub in sorted(PUBLIC_COMICS.iterdir()):
+        if not sub.is_dir():
+            continue
+        sj = sub / "series.json"
+        if not sj.exists():
+            continue
+        try:
+            sd = json.loads(sj.read_text(encoding="utf-8-sig"))
+        except Exception:
+            continue
+        first = sd["issues"][0] if sd["issues"] else {}
+        library_series.append({
+            "id":         sd["id"],
+            "title":      sd["title"],
+            "cover":      first.get("cover", ""),
+            "issueCount": len(sd["issues"]),
+            "path":       sd["id"],
+        })
+    library = {
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "series": sorted(library_series, key=lambda s: s["title"]),
+    }
+    (PUBLIC_COMICS / "library.json").write_text(json.dumps(library, indent=2), encoding="utf-8")
+    print(f"✓ wrote library.json ({len(library_series)} series)")
+
+
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        sys.exit("usage: python harvester/harvest_local.py <path-to-cbz-or-cbr>")
-    harvest_local(Path(sys.argv[1]))
+        sys.exit("usage: python harvest_local.py <path-to-cbz-or-cbr-or-extracted-folder>")
+    arg = Path(sys.argv[1])
+    if arg.is_dir():
+        harvest_folder(arg)
+    else:
+        harvest_local(arg)

@@ -202,7 +202,11 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     min_gutter_h = max(int(w * 0.004), 5)   # vertical gutter (between cols)
     min_panel_w = int(w * 0.18)
     min_panel_h = int(h * 0.10)
-    ink_ratio = 0.10
+    # 0.20 (was 0.10) — dark-background comics have gutters with up to ~15%
+    # residual dark pixels from anti-aliasing, speech-bubble tails, and thin
+    # panel border lines; 0.20 catches those without creating false gutters in
+    # typical content rows (which run 25-70% dark).
+    ink_ratio = 0.20
     bbox_ink_ratio = 0.02
 
     def find_gutter_runs(profile: np.ndarray, threshold: float, min_run: int) -> List[Tuple[int, int]]:

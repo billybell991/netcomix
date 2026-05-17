@@ -217,90 +217,23 @@ def _write_jpeg(raw: bytes, path: Path) -> None:
 # ─── Panel detection ─────────────────────────────────────────────────────
 
 def detect_panels(image_path: Path) -> tuple[int, int, list[Panel], str]:
-    img = cv2.imread(str(image_path))
-    if img is None:
-        return 0, 0, [], "#222"
-    h, w = img.shape[:2]
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    th = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 25, 15)
-    kernel = np.ones((5, 5), np.uint8)
-    closed = cv2.morphologyEx(th, cv2.MORPH_CLOSE, kernel, iterations=2)
-    contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    """Delegates to harvest.py's projection-cut algorithm.
 
-    min_w = int(w * 0.12)
-    min_h = int(h * 0.08)
-    max_area = w * h * 0.75  # anything bigger is almost certainly the page-frame itself
-    min_panel_area = w * h * 0.08  # drop tiny fragments (logos, blurbs, etc.)
-    # Pad each detected panel by this many pixels on every side so overflowing
-    # speech bubbles, captions, and SFX text stay in frame when snapped.
-    pad_x = int(w * 0.025)
-    pad_y = int(h * 0.02)
-    panels: list[Panel] = []
-    for cnt in contours:
-        x, y, cw, ch = cv2.boundingRect(cnt)
-        if cw < min_w or ch < min_h:
-            continue
-        if cw * ch > max_area:
-            continue
-        if cw * ch < min_panel_area:
-            continue
-        if x < 0 or y < 0 or x + cw > w or y + ch > h:
-            continue
-        # Apply text-overflow padding, clamped to page bounds
-        px = max(0, x - pad_x)
-        py = max(0, y - pad_y)
-        pw = min(w, x + cw + pad_x) - px
-        ph = min(h, y + ch + pad_y) - py
-        panels.append(Panel(px, py, pw, ph, px + pw // 2, py + ph // 2))
-
-    # ── Whole-page heuristics: reject catalog / gallery / splash pages ───────
-    page_area = w * h
-
-    # Hard cap: Western comics rarely exceed 9 panels per page.
-    if len(panels) > 9:
-        panels = []
-
-    if len(panels) >= 2:
-        areas = np.array([p.w * p.h for p in panels], dtype=float)
-
-        # Uniformity (CV = σ/μ): real comic pages have varied panel sizes for
-        # dramatic pacing; catalog/thumbnail grids are suspiciously uniform.
-        cv = float(areas.std() / areas.mean()) if areas.mean() > 0 else 0.0
-        uniform_threshold = 0.25 if len(panels) >= 6 else 0.15
-        if cv < uniform_threshold:
-            panels = []  # thumbnail grid or uniform layout → treat as splash
-
-        # Geometric grid check: if centres snap to a rows×cols grid, it's a
-        # gallery layout, not comic panels.
-        if panels and len(panels) >= 4:
-            tol = 0.12
-            n_cols = len(set(round(p.centerX / (w * tol)) for p in panels))
-            n_rows = len(set(round(p.centerY / (h * tol)) for p in panels))
-            if n_rows >= 2 and n_cols >= 2 and n_rows * n_cols == len(panels):
-                panels = []  # regular grid → not comic panels
-
-        # Coverage: if panels cover <35% of the page there's too little art.
-        if panels:
-            areas = np.array([p.w * p.h for p in panels], dtype=float)
-            if page_area > 0 and float(areas.sum()) / page_area < 0.35:
-                panels = []
-
-    # Reading order: top-to-bottom, left-to-right with overlap awareness so a
-    # tall left-column panel reads before a top-right stacked panel.
-    import functools
-
-    def cmp(a: Panel, b: Panel) -> int:
-        a_bot, b_bot = a.y + a.h, b.y + b.h
-        overlap = max(0, min(a_bot, b_bot) - max(a.y, b.y))
-        if overlap > 0.4 * min(a.h, b.h):
-            return -1 if a.x < b.x else (1 if a.x > b.x else 0)
-        return -1 if a.y < b.y else (1 if a.y > b.y else 0)
-
-    panels.sort(key=functools.cmp_to_key(cmp))
-
-    avg = cv2.mean(img)[:3]
-    dom = "#{:02x}{:02x}{:02x}".format(int(avg[2]), int(avg[1]), int(avg[0]))
-    return w, h, panels, dom
+    The old contour-based approach failed completely on dark-background pages
+    (e.g. Red Room) because it looks for light content blobs — which don't
+    exist when the panels themselves have dark art.  The projection-cut finds
+    gutters (light strips between panels) and is robust to both light and
+    dark page styles.  The Pass-2 false-positive filters (CV, grid, coverage,
+    hard cap) are all inside harvest.detect_panels already.
+    """
+    import sys as _sys
+    import os as _os
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    from harvest import detect_panels as _projection_cut  # type: ignore
+    w, h, raw, dom = _projection_cut(image_path)
+    # Normalise Panel type (both namedtuples have same fields; re-wrap for safety)
+    panels = [Panel(p.x, p.y, p.w, p.h, p.centerX, p.centerY) for p in raw]
+    return w, h, panels, dom or "#222"
 
 
 # ─── Series / issue parsing ──────────────────────────────────────────────
