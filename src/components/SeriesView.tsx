@@ -34,7 +34,7 @@ export function SeriesView({ series, index, onBack, onSelectIssue, coverUrl }: P
               >
                 <img
                   className="card-cover"
-                  src={coverUrl(issue.id, issue.cover, issue.coverFileId)}
+                  src={coverUrl(`${issue.path}/${issue.cover}`, issue.coverFileId)}
                   alt={issue.title}
                   loading="lazy"
                 />
