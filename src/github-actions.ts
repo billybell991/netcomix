@@ -1,6 +1,6 @@
 // Trigger a GitHub Actions workflow_dispatch and poll its status.
 
-import { getConfig } from "./config";
+import { getConfig, isGithubConfigured } from "./config";
 
 const GH_API = "https://api.github.com";
 
@@ -49,6 +49,7 @@ export async function triggerScan(): Promise<void> {
 }
 
 export async function latestScanRun(): Promise<WorkflowRun | null> {
+  if (!isGithubConfigured()) return null;
   const { ghOwner, ghRepo } = getConfig();
   const res = await fetch(
     `${GH_API}/repos/${ghOwner}/${ghRepo}/actions/workflows/scan.yml/runs?per_page=1`,

@@ -61,6 +61,20 @@ python harvest.py --source ../comics-source --output ../public/comics
 | Panel detection | Python + OpenCV (`harvester/harvest.py`) |
 | CI | GitHub Actions: `harvest.yml`, `deploy.yml`, `tests.yml` |
 
+## To-do
+
+- **Local comic upload (Settings)** — Add a file-picker to the Settings view that accepts one or more `.cbz`/`.cbr` files from the local drive, runs the harvester pipeline (`harvest_local.py`) against only those files, writes the resulting JSON + page images into `public/comics/`, and refreshes the library without a full re-harvest. Should handle batch uploads (multiple files selected at once).
+
+- **Next/Prev button size (Settings)** — Add a button-size preference (Small / Medium / Large) to the Settings view. The chosen size scales the hit-zone and visual size of the Next and Prev buttons while keeping the user's existing layout-position setting (corners, sides, etc.) unchanged.
+
+- **Library alphabetical sort** — Sort series on the main Library page alphabetically by title so comics are easy to find as the collection grows.
+
+- **Library search bar** — Add a dynamic/live search bar to the Library page that filters series by title as the user types, with no submit button needed.
+
+- **Settings GitHub error** — Investigate and fix the lingering GitHub API error that still appears in the Settings view. Identify the root cause (bad token, wrong repo path, missing permission, stale config, etc.) and surface a clear error message or resolution hint to the user instead of a raw error.
+
+- **Scan button feedback** — Make the Scan button in Settings actually reflect what's happening: show a spinner or progress indicator while the GitHub Action is queued/running, and display a clear success or failure result when it finishes. Ideally surface per-file or percentage progress if the API supports it.
+
 ## License
 
 Personal project. No license granted.

@@ -36,4 +36,14 @@ public/comics/savage-tales/*.jpg
 public/comics/savage-tales/**/*.jpg
 public/comics/savage-tales/**/*.png
 public/comics/savage-tales/**/*.webp
+public/comics/red-room/*.jpg
+public/comics/red-room/**/*.jpg
+public/comics/red-room/**/*.png
+public/comics/red-room/**/*.webp
+
+# Local-only artifacts
+public/comics/demo-series/
+scan-log.txt
+harvester/debug_*.jpg
+harvester/test_page*.py
 

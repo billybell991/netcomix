@@ -104,6 +104,22 @@
 }
 .card-fav.on { color: #e50914; }
 
+.search-bar {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 12px 0 4px;
+  padding: 8px 12px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 15px;
+  outline: none;
+}
+.search-bar::placeholder { color: #666; }
+.search-bar:focus { border-color: #555; }
+
 .section-title {
   margin: 16px 4px 8px;
   font-size: 14px;
@@ -113,3 +129,55 @@
 }
 
 /* Reader styling lives in Reader.css to keep concerns separate */
+
+/* ── Spinner ─────────────────────────────────────────────────── */
+@keyframes nc-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes nc-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+.nc-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: nc-spin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+.nc-dot-pulse {
+  animation: nc-pulse 1.2s ease-in-out infinite;
+}
+/* progress bar */
+.nc-progress-bar-track {
+  height: 4px;
+  background: #222;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+.nc-progress-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 1s linear;
+}
+@keyframes nc-stripe {
+  from { background-position: 0 0; }
+  to   { background-position: 28px 0; }
+}
+.nc-progress-bar-fill.indeterminate {
+  width: 100% !important;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255,255,255,0.15) 0px,
+    rgba(255,255,255,0.15) 7px,
+    transparent 7px,
+    transparent 14px
+  );
+  background-size: 28px 28px;
+  animation: nc-stripe 0.7s linear infinite;
+}

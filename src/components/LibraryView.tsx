@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Library, SeriesEntry } from "../types";
 import { coverUrl } from "../library";
 import { toggleFavorite } from "../storage";
@@ -25,9 +26,21 @@ export function LibraryView({ library, favorites, onSelectSeries, onFavoritesCha
     );
   }
 
+  const [query, setQuery] = useState("");
+
   const favs = new Set(favorites);
-  const favSeries = library.series.filter((s) => favs.has(s.id));
-  const allSeries = library.series;
+  const q = query.trim().toLowerCase();
+
+  const sortKey = (title: string) =>
+    title.replace(/^(the|a|an)\s+/i, "").trimStart();
+
+  const sorted = [...library.series].sort((a, b) =>
+    sortKey(a.title).localeCompare(sortKey(b.title))
+  );
+  const favSeries = sorted.filter((s) => favs.has(s.id));
+  const allSeries = q
+    ? sorted.filter((s) => s.title.toLowerCase().includes(q))
+    : sorted;
 
   return (
     <div className="shell" data-testid="library-view">
@@ -36,7 +49,15 @@ export function LibraryView({ library, favorites, onSelectSeries, onFavoritesCha
         {onOpenAdmin && <AdminBtn onClick={onOpenAdmin} />}
       </div>
       <div className="shell-body">
-        {favSeries.length > 0 && (
+        <input
+          className="search-bar"
+          type="search"
+          placeholder="Search series…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          data-testid="search-input"
+        />
+        {!q && favSeries.length > 0 && (
           <>
             <div className="section-title">Favorites</div>
             <Grid
@@ -47,10 +68,10 @@ export function LibraryView({ library, favorites, onSelectSeries, onFavoritesCha
             />
           </>
         )}
-        <div className="section-title">All Series</div>
+        <div className="section-title">{q ? "Results" : "All Series"}</div>
         {allSeries.length === 0 ? (
           <p style={{ color: "#888" }} data-testid="empty-library">
-            No comics yet. Drop a .cbz/.cbr into your Drive folder, then tap ⚙ → Scan.
+            {q ? `No series matching "${query}".` : "No comics yet. Drop a .cbz/.cbr into your Drive folder, then tap ⚙ → Scan."}
           </p>
         ) : (
           <Grid
