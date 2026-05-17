@@ -1,0 +1,78 @@
+﻿{
+  "id": "savage-tales",
+  "title": "Savage Tales",
+  "issues": [
+    {
+      "id": "savage-tales-01-1985-1CjonL",
+      "title": "Savage Tales #01",
+      "cover": "page-001.jpg",
+      "coverFileId": "1vssf71e7BZ7TuNM10hX8ztD7lCY6E0nl",
+      "pageCount": 69,
+      "path": "savage-tales/savage-tales-01-1985-1CjonL",
+      "issueFileId": "1tLQqN28vj5dMwZ8kzErk_faLO-0WdwdR"
+    },
+    {
+      "id": "savage-tales-02-1986-1CjonL",
+      "title": "Savage Tales #02",
+      "cover": "page-001.jpg",
+      "coverFileId": "1ktn1bNUSAimNlX8h1PQt74fYMElLvMYq",
+      "pageCount": 64,
+      "path": "savage-tales/savage-tales-02-1986-1CjonL",
+      "issueFileId": "1C_-PHHYHM2Hyoyj-cnq2Gl9a-aYPekFI"
+    },
+    {
+      "id": "savage-tales-03-1986-1CjonL",
+      "title": "Savage Tales #03",
+      "cover": "page-001.jpg",
+      "coverFileId": "1r92dIH-H6NVWz5RO50PE2daj7hw9OVqR",
+      "pageCount": 66,
+      "path": "savage-tales/savage-tales-03-1986-1CjonL",
+      "issueFileId": "1MhTP8NU5feRJMP5jm24CTxkQu_js4XMj"
+    },
+    {
+      "id": "savage-tales-04-1986-1CjonL",
+      "title": "Savage Tales #04",
+      "cover": "page-001.jpg",
+      "coverFileId": "1LH7NMSDapUc-hbz4xRc8jSqREhO1lWem",
+      "pageCount": 66,
+      "path": "savage-tales/savage-tales-04-1986-1CjonL",
+      "issueFileId": "1TLOYUKLL1Hjep3vuIHqXDLlgbGXjHbE_"
+    },
+    {
+      "id": "savage-tales-05-1986-1CjonL",
+      "title": "Savage Tales #05",
+      "cover": "page-001.jpg",
+      "coverFileId": "1EQ_b1SOUVICP-dUr6VMWY3iHvbzNivZv",
+      "pageCount": 65,
+      "path": "savage-tales/savage-tales-05-1986-1CjonL",
+      "issueFileId": "1j-osb7JcOtHip_c1om_QVKSqNVXQ0KsM"
+    },
+    {
+      "id": "savage-tales-06-1986-1CjonL",
+      "title": "Savage Tales #06",
+      "cover": "page-001.jpg",
+      "coverFileId": "1bvV7jwqoTGzJk9KFL0Y1oFCFmQhSuvc7",
+      "pageCount": 69,
+      "path": "savage-tales/savage-tales-06-1986-1CjonL",
+      "issueFileId": "1SLJqkezLBg1vuMhZCtAD7Uk49DkbwFlP"
+    },
+    {
+      "id": "savage-tales-07-1986-1CjonL",
+      "title": "Savage Tales #07",
+      "cover": "page-001.jpg",
+      "coverFileId": "1A30aXGFDKjjZ0Cy862XxoQqdJEyVk7Bn",
+      "pageCount": 68,
+      "path": "savage-tales/savage-tales-07-1986-1CjonL",
+      "issueFileId": "1_0axhBELT4ugUqGBuO0CA3Q5DKsnQR9f"
+    },
+    {
+      "id": "savage-tales-08-1986-1CjonL",
+      "title": "Savage Tales #08",
+      "cover": "page-001.jpg",
+      "coverFileId": "1501mFjpy02D32iqr70msZClMmFeurUGT",
+      "pageCount": 66,
+      "path": "savage-tales/savage-tales-08-1986-1CjonL",
+      "issueFileId": "1okAJCm1b7vp8DZoU2we-tQHU2ynfGcBu"
+    }
+  ]
+}
