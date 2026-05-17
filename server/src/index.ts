@@ -74,6 +74,24 @@ app.get("/api/issue/:id", async (c) => {
   }
 });
 
+// ─── Admin: bulk migrate ──────────────────────────────────────────────────────
+app.post("/api/admin/migrate", async (c) => {
+  try {
+    const body = await c.req.json<{ series?: unknown[]; issues?: unknown[] }>();
+    if (!Array.isArray(body.series) || !Array.isArray(body.issues)) {
+      return c.json({ error: "Body must have series[] and issues[] arrays" }, 400);
+    }
+    const result = await db.bulkMigrate(
+      body.series as Parameters<typeof db.bulkMigrate>[0],
+      body.issues as Parameters<typeof db.bulkMigrate>[1],
+    );
+    return c.json({ ok: true, ...result });
+  } catch (e) {
+    console.error("POST /api/admin/migrate", e);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
 // ─── Health ───────────────────────────────────────────────────────────────────
 app.get("/health", (c) => c.json({ ok: true }));
 

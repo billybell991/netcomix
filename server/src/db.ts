@@ -98,6 +98,50 @@ export const db = {
     };
   },
 
+  async bulkMigrate(series: SeriesInput[], issues: IssueInput[]) {
+    const now = new Date();
+    for (const s of series) {
+      await sql`
+        INSERT INTO series
+          (id, title, path, issue_count, cover_r2_key, cover_drive_id, drive_folder_id, generated_at)
+        VALUES
+          (${s.id}, ${s.title}, ${s.path}, ${s.issue_count},
+           ${s.cover_r2_key ?? null}, ${s.cover_drive_id ?? null},
+           ${s.drive_folder_id ?? null}, ${now})
+        ON CONFLICT (id) DO UPDATE SET
+          title           = EXCLUDED.title,
+          path            = EXCLUDED.path,
+          issue_count     = EXCLUDED.issue_count,
+          cover_r2_key    = COALESCE(EXCLUDED.cover_r2_key, series.cover_r2_key),
+          cover_drive_id  = COALESCE(EXCLUDED.cover_drive_id, series.cover_drive_id),
+          drive_folder_id = COALESCE(EXCLUDED.drive_folder_id, series.drive_folder_id),
+          generated_at    = EXCLUDED.generated_at
+      `;
+    }
+    for (const i of issues) {
+      await sql`
+        INSERT INTO issues
+          (id, series_id, title, page_count, pages,
+           cover_r2_key, cover_drive_id, drive_file_id, generated_at)
+        VALUES
+          (${i.id}, ${i.series_id}, ${i.title}, ${i.page_count},
+           ${sql.json(i.pages)},
+           ${i.cover_r2_key ?? null}, ${i.cover_drive_id ?? null},
+           ${i.drive_file_id ?? null}, ${now})
+        ON CONFLICT (id) DO UPDATE SET
+          series_id      = EXCLUDED.series_id,
+          title          = EXCLUDED.title,
+          page_count     = EXCLUDED.page_count,
+          pages          = EXCLUDED.pages,
+          cover_r2_key   = COALESCE(EXCLUDED.cover_r2_key, issues.cover_r2_key),
+          cover_drive_id = COALESCE(EXCLUDED.cover_drive_id, issues.cover_drive_id),
+          drive_file_id  = COALESCE(EXCLUDED.drive_file_id, issues.drive_file_id),
+          generated_at   = EXCLUDED.generated_at
+      `;
+    }
+    return { seriesCount: series.length, issueCount: issues.length };
+  },
+
   async getIssue(id: string) {
     const [issue] = await sql<{
       id: string; title: string; series_id: string;
@@ -130,4 +174,25 @@ interface PageRow {
   height: number;
   panels: { x: number; y: number; w: number; h: number; centerX: number; centerY: number }[];
   dominantColor?: string;
+}
+
+interface SeriesInput {
+  id: string;
+  title: string;
+  path: string;
+  issue_count: number;
+  cover_r2_key?: string | null;
+  cover_drive_id?: string | null;
+  drive_folder_id?: string | null;
+}
+
+interface IssueInput {
+  id: string;
+  series_id: string;
+  title: string;
+  page_count: number;
+  pages: unknown[];
+  cover_r2_key?: string | null;
+  cover_drive_id?: string | null;
+  drive_file_id?: string | null;
 }
