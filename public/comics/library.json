@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-16T23:11:49.686747+00:00",
+  "generatedAt": "2026-05-17T10:27:15.976769+00:00",
   "series": [
     {
       "id": "red-room",
@@ -9,6 +9,15 @@
       "issueCount": 4,
       "path": "red-room",
       "seriesFileId": "14baAZSOkt0v0Csc6yxvwm4ne4yrkZsH3"
+    },
+    {
+      "id": "savage-tales",
+      "title": "Savage Tales",
+      "cover": "page-001.jpg",
+      "coverFileId": "1vssf71e7BZ7TuNM10hX8ztD7lCY6E0nl",
+      "issueCount": 8,
+      "path": "savage-tales",
+      "seriesFileId": "1dZ0M9qeP8rxI0fGHBNSKmKx_HRp6GORl"
     },
     {
       "id": "the-fourth-man",
