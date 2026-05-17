@@ -4,10 +4,11 @@ const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) throw new Error("DATABASE_URL env var required");
 
 export const sql = postgres(DATABASE_URL, {
-  // Railway internal connections (postgres.railway.internal) don't need SSL.
-  // External connections (public proxy URL) do.
-  ssl: DATABASE_URL.includes("railway.internal") ? false : { rejectUnauthorized: false },
+  // rejectUnauthorized: false works for both internal (self-signed cert) and
+  // external Railway Postgres connections without needing to manage certificates.
+  ssl: { rejectUnauthorized: false },
   max: 10,
+  connect_timeout: 15,
 });
 
 // R2 public base URL — stored once, prepended to every r2Key at query time.
