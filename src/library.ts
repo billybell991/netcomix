@@ -1,6 +1,8 @@
-// Library fetch helpers — Drive-backed when configured, static /comics/ fallback otherwise.
+// Library fetch helpers — API-backed when configured, Drive-backed when configured,
+// static /comics/ fallback otherwise.
 
-import { isDriveConfigured } from "./config";
+import { isApiConfigured, isDriveConfigured } from "./config";
+import { apiLibrary, apiSeries, apiIssue } from "./api";
 import { fetchJsonById, mediaUrl } from "./drive";
 import type { IssueIndexEntry, IssueManifest, Library, PageManifest, SeriesEntry, SeriesIndex } from "./types";
 
@@ -27,31 +29,40 @@ async function fetchJson<T>(url: string): Promise<T> {
 // which sidesteps Drive's folder-listing limitation for API-key clients.
 
 export async function fetchLibrary(): Promise<Library> {
+  if (isApiConfigured()) return apiLibrary();
   return fetchJson<Library>(`${COMICS_BASE}library.json`);
 }
 
 export async function fetchSeries(seriesPath: string, _series?: SeriesEntry): Promise<SeriesIndex> {
+  if (isApiConfigured()) return apiSeries(seriesPath);
   return fetchJson<SeriesIndex>(`${COMICS_BASE}${seriesPath}/series.json`);
 }
 
 export async function fetchIssue(issuePath: string, issue?: IssueIndexEntry): Promise<IssueManifest> {
+  if (isApiConfigured()) {
+    // issue.id is the bare issue id; issuePath is "series/issue-id"
+    const id = issue?.id ?? issuePath.split("/").pop() ?? issuePath;
+    return apiIssue(id);
+  }
   if (issue?.issueFileId && isDriveConfigured()) {
     return fetchJsonById<IssueManifest>(issue.issueFileId);
   }
   return fetchJson<IssueManifest>(`${COMICS_BASE}${issuePath}/issue.json`);
 }
 
-/** URL for a page image — drive media URL when page has fileId, else static path. */
+/** URL for a page image — R2 URL (api-mode), drive media URL, or static path. */
 export function pageUrl(issuePath: string, fileOrPage: string | PageManifest): string {
-  if (typeof fileOrPage !== "string" && fileOrPage.fileId && isDriveConfigured()) {
-    return mediaUrl(fileOrPage.fileId);
+  if (typeof fileOrPage !== "string") {
+    if (fileOrPage.url) return fileOrPage.url;
+    if (fileOrPage.fileId && isDriveConfigured()) return mediaUrl(fileOrPage.fileId);
   }
   const file = typeof fileOrPage === "string" ? fileOrPage : fileOrPage.file;
   return `${COMICS_BASE}${issuePath}/${file}`;
 }
 
-/** URL for a cover thumbnail. Use Drive media API when configured (avoids ORB on thumbnail redirects). */
-export function coverUrl(basePath: string, file: string, fileId?: string): string {
+/** URL for a cover thumbnail — R2 URL (api-mode), drive media URL, or static path. */
+export function coverUrl(basePath: string, file: string, fileId?: string, r2Url?: string): string {
+  if (r2Url) return r2Url;
   if (fileId && isDriveConfigured()) return mediaUrl(fileId);
   return `${COMICS_BASE}${basePath}/${file}`;
 }

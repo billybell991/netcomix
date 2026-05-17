@@ -40,7 +40,6 @@ jobs:
         run: |
           pip install -r harvester/requirements.txt
           pip install google-api-python-client google-auth
-
       - name: Run drive harvester
         env:
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
@@ -48,6 +47,12 @@ jobs:
           GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
           DRIVE_FOLDER_ID: ${{ inputs.folder_id || vars.DRIVE_FOLDER_ID || '12Sz-mb5iQvWJm5tCodTCIYMRPK9fxZiv' }}
           LIMIT: ${{ inputs.limit }}
+          # Optional: R2 + Postgres output — set these secrets to enable Railway backend sync
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: python harvester/harvest_drive.py
 
       - name: Commit static manifests

@@ -4,6 +4,7 @@ dist-ssr
 *.local
 .env
 .env.local
+server/.env
 .vscode/*
 !.vscode/extensions.json
 .DS_Store
@@ -25,6 +26,9 @@ harvester/cache/
 comics-source/*.cbz
 comics-source/*.cbr
 comics-source/*.zip
+comics-source/**/*.jpg
+comics-source/**/*.png
+comics-source/**/*.webp
 !comics-source/.gitkeep
 !comics-source/README.md
 

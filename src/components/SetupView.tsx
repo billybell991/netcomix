@@ -37,6 +37,14 @@ export function SetupView({ onSaved, onSkip }: Props) {
         </p>
 
         <fieldset style={{ border: "1px solid #333", borderRadius: 8, padding: 16, marginBottom: 16 }}>
+          <legend style={{ padding: "0 6px", color: "#ddd" }}>Railway API (primary)</legend>
+          <Field label="API URL" value={cfg.apiUrl} onChange={upd("apiUrl")}
+            hint="Your Railway backend URL, e.g. https://netcomix-api.railway.app" />
+          <Field label="Access code" value={cfg.accessCode} onChange={upd("accessCode")} type="password"
+            hint="The ACCESS_CODE env var you set on the Railway service" />
+        </fieldset>
+
+        <fieldset style={{ border: "1px solid #333", borderRadius: 8, padding: 16, marginBottom: 16 }}>
           <legend style={{ padding: "0 6px", color: "#ddd" }}>Google Drive (read)</legend>
           <Field label="Drive folder ID" value={cfg.driveFolderId} onChange={upd("driveFolderId")}
             hint="From your Drive folder URL: drive.google.com/drive/folders/<THIS_PART>" />

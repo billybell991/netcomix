@@ -16,6 +16,8 @@ export interface PageManifest {
   file: string;
   /** Drive file id (drive-mode lookup) */
   fileId?: string;
+  /** Full image URL (api-mode — takes priority over fileId and file) */
+  url?: string;
   /** Original image dimensions */
   width: number;
   height: number;
@@ -45,6 +47,8 @@ export interface SeriesEntry {
   coverFileId?: string;
   /** Drive file id of series.json (drive-mode) */
   seriesFileId?: string;
+  /** Full cover image URL (api-mode — takes priority) */
+  coverUrl?: string;
 }
 
 export interface Library {
@@ -63,6 +67,8 @@ export interface IssueIndexEntry {
   coverFileId?: string;
   /** Drive file id of issue.json (drive-mode) */
   issueFileId?: string;
+  /** Full cover image URL (api-mode — takes priority) */
+  coverUrl?: string;
 }
 
 export interface SeriesIndex {

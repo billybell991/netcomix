@@ -36,6 +36,19 @@ import cv2
 import numpy as np
 import rarfile
 
+# ─── Optional R2 + Postgres output (activated by env vars) ───────────────────
+try:
+    import sys as _sys
+    import os as _os
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    from r2 import r2_configured, upload_jpeg as _r2_upload_jpeg  # type: ignore
+    from db_pg import pg_configured, upsert_issue as _pg_upsert_issue, upsert_series as _pg_upsert_series  # type: ignore
+    _HAS_R2_PG = True
+except ImportError:
+    _HAS_R2_PG = False
+    def r2_configured(): return False  # type: ignore
+    def pg_configured(): return False  # type: ignore
+
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 ARCHIVE_EXTS = {".cbz", ".zip", ".cbr", ".rar"}
 PAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -379,11 +392,20 @@ def harvest(root_folder_id: str) -> None:
                             issue_id, issue_label, len(page_outs),
                             page_outs[0].file, page_outs[0].fileId, issue_file_id)
 
+            # ── R2 + Postgres output (when configured) ──────────────────────
+            if _HAS_R2_PG and r2_configured() and pg_configured():
+                _write_r2_pg(
+                    series_id=series_id, issue_id=issue_id, issue_label=issue_label,
+                    series_title=series_title, series_folder_id=series_folder_id,
+                    page_outs=page_outs, extracted_dir=extracted_dir,
+                )
+
             # Flush manifest after each newly-harvested issue so the PWA sees progress live.
             maybe_flush(force=True)
 
     # Final flush (also covers the case where every issue was skipped).
     _publish_manifest(svc, root_folder_id, series_map)
+    _publish_manifest_r2_pg(series_map)
 
 
 def _publish_manifest(svc, root_folder_id: str, series_map: dict) -> None:
@@ -456,6 +478,80 @@ def _page_to_dict(p: PageOut) -> dict:
     d = asdict(p)
     d["panels"] = [asdict(pn) for pn in p.panels]
     return d
+
+
+def _write_r2_pg(
+    *,
+    series_id: str,
+    issue_id: str,
+    issue_label: str,
+    series_title: str,
+    series_folder_id: str,
+    page_outs: "list[PageOut]",
+    extracted_dir: "Path",
+) -> None:
+    """Upload pages to R2 and write issue + series metadata to Postgres.
+    Called only when r2_configured() and pg_configured() are both True.
+    The Drive upload path above is completely unchanged."""
+    cover_r2_key: str | None = None
+    pages_pg: list[dict] = []
+    for idx, p in enumerate(page_outs):
+        local = extracted_dir / p.file
+        if not local.exists():
+            print(f"    [r2] {p.file} not on disk (already cleaned up?), skipping", flush=True)
+            pages_pg.append({
+                "file": p.file, "r2Key": None,
+                "width": p.width, "height": p.height,
+                "panels": [asdict(pn) for pn in p.panels],
+                "dominantColor": p.dominantColor,
+            })
+            continue
+        r2_key = f"{series_id}/{issue_id}/{p.file}"
+        _r2_upload_jpeg(local, r2_key)  # type: ignore[name-defined]
+        if idx == 0:
+            cover_r2_key = r2_key
+        pages_pg.append({
+            "file": p.file, "r2Key": r2_key,
+            "width": p.width, "height": p.height,
+            "panels": [asdict(pn) for pn in p.panels],
+            "dominantColor": p.dominantColor,
+        })
+        print(f"    [r2] {p.file} ✓", flush=True)
+
+    _pg_upsert_issue(  # type: ignore[name-defined]
+        issue_id=issue_id,
+        series_id=series_id,
+        title=issue_label,
+        page_count=len(pages_pg),
+        pages=pages_pg,
+        cover_r2_key=cover_r2_key,
+        cover_drive_id=page_outs[0].fileId if page_outs else None,
+    )
+    _pg_upsert_series(  # type: ignore[name-defined]
+        series_id=series_id,
+        title=series_title,
+        path=series_id,
+        issue_count=1,  # updated properly in _publish_manifest_r2_pg
+        cover_r2_key=cover_r2_key,
+        cover_drive_id=page_outs[0].fileId if page_outs else None,
+        drive_folder_id=series_folder_id,
+    )
+    print(f"    [pg] issue + series upserted ✓", flush=True)
+
+
+def _publish_manifest_r2_pg(series_map: dict) -> None:
+    """Update series.issue_count in Postgres after a full scan."""
+    if not (_HAS_R2_PG and r2_configured() and pg_configured()):
+        return
+    for sid, s in series_map.items():
+        _pg_upsert_series(  # type: ignore[name-defined]
+            series_id=sid,
+            title=s["title"],
+            path=sid,
+            issue_count=len(s["issues"]),
+            drive_folder_id=s["folderId"],
+        )
+    print(f"  [pg] series issue_counts updated ✓")
 
 
 if __name__ == "__main__":

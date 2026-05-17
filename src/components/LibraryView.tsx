@@ -111,7 +111,7 @@ function Grid({
           >
             <img
               className="card-cover"
-              src={coverUrl(s.path, s.cover, s.coverFileId)}
+              src={coverUrl(s.path, s.cover, s.coverFileId, s.coverUrl)}
               alt={s.title}
               loading="lazy"
             />

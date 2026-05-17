@@ -1,0 +1,17 @@
+# Railway deployment config for the Hono API server.
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "npm install && npm run build"
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Required env vars (set in Railway dashboard):
+# DATABASE_URL       — auto-injected when you link the Postgres service
+# ACCESS_CODE        — shared password for the app
+# R2_PUBLIC_URL      — public URL of your R2 bucket (e.g. https://pub-<hash>.r2.dev)

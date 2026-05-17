@@ -5,7 +5,7 @@ interface Props {
   index: SeriesIndex | null;
   onBack: () => void;
   onSelectIssue: (issue: IssueIndexEntry) => void;
-  coverUrl: (file: string, fileId?: string) => string;
+  coverUrl: (file: string, fileId?: string, r2Url?: string) => string;
 }
 
 export function SeriesView({ series, index, onBack, onSelectIssue, coverUrl }: Props) {
@@ -34,7 +34,7 @@ export function SeriesView({ series, index, onBack, onSelectIssue, coverUrl }: P
               >
                 <img
                   className="card-cover"
-                  src={coverUrl(`${issue.path}/${issue.cover}`, issue.coverFileId)}
+                  src={coverUrl(`${issue.path}/${issue.cover}`, issue.coverFileId, issue.coverUrl)}
                   alt={issue.title}
                   loading="lazy"
                 />
