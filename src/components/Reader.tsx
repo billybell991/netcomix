@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { IssueManifest } from "../types";
 import { pageUrl } from "../library";
 import {
@@ -38,6 +38,26 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     height: typeof window !== "undefined" ? window.innerHeight : 1200,
   });
   const [hudOpen, setHudOpen] = useState(false);
+
+  // ── Pinpoint calibration tool (dev only) ──────────────────────────────
+  const [pinpointMode, setPinpointMode] = useState(false);
+  const [pinpoints, setPinpoints] = useState<{ x: number; y: number }[]>([]);
+  const [panelPos, setPanelPos] = useState({ x: window.innerWidth - 204, y: 12 });
+  const dragRef = useRef<{ startMouseX: number; startMouseY: number; startPanelX: number; startPanelY: number } | null>(null);
+  const handlePanelDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    dragRef.current = { startMouseX: e.clientX, startMouseY: e.clientY, startPanelX: panelPos.x, startPanelY: panelPos.y };
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      setPanelPos({
+        x: dragRef.current.startPanelX + ev.clientX - dragRef.current.startMouseX,
+        y: dragRef.current.startPanelY + ev.clientY - dragRef.current.startMouseY,
+      });
+    };
+    const onUp = () => { dragRef.current = null; window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
 
   // Pinch zoom + drag pan — overrides snap until Next/Prev resets it.
   // Use a callback ref backed by state so the gesture effect re-runs when
@@ -119,6 +139,16 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     }
   };
 
+  // Pinpoint click handler — records image-space coordinates
+  const handleStageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!pinpointMode || !effectiveTransform) return;
+    e.stopPropagation();
+    const { translateX: tx, translateY: ty, scale: s } = effectiveTransform;
+    const imgX = Math.round((e.clientX - tx) / s);
+    const imgY = Math.round((e.clientY - ty) / s);
+    setPinpoints((prev) => [...prev, { x: imgX, y: imgY }]);
+  };
+
   // Double-tap anywhere (outside Next/Prev) toggles the HUD.
   const handleDoubleClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -147,6 +177,7 @@ export function Reader({ issue, issuePath, onBack }: Props) {
       className="reader"
       data-testid="reader"
       onDoubleClick={handleDoubleClick}
+      onClick={pinpointMode ? handleStageClick : undefined}
     >
       <div className="reader-bg" style={bgStyle} data-testid="reader-bg" />
       <div className="reader-stage" ref={setStageEl}>
@@ -179,6 +210,48 @@ export function Reader({ issue, issuePath, onBack }: Props) {
         style={{ opacity, background: `rgba(255,255,255,${0.85 * opacity * 4})` }}
         onClick={(e) => { e.stopPropagation(); goNext(); }}
       >›</button>
+
+      {/* Pinpoint dots — rendered in image space, positioned via transform */}
+      {pinpointMode && effectiveTransform && pinpoints.map((pt, i) => {
+        const { translateX: tx, translateY: ty, scale: s } = effectiveTransform;
+        const screenX = pt.x * s + tx;
+        const screenY = pt.y * s + ty;
+        return (
+          <div key={i} className="pinpoint-dot" style={{ left: screenX, top: screenY }}>
+            <span className="pinpoint-label">{i + 1}: ({pt.x}, {pt.y})</span>
+          </div>
+        );
+      })}
+
+      {/* Pinpoint coordinate list */}
+      {pinpointMode && (
+        <div className="pinpoint-panel" data-nohud style={{ left: panelPos.x, top: panelPos.y }} onClick={(e) => e.stopPropagation()}>
+          <strong className="pinpoint-drag-handle" onMouseDown={handlePanelDragStart}>📍 Pinpoint mode ⠿</strong>
+          {pinpoints.length === 0 && <div>Click corners of each panel</div>}
+          {pinpoints.map((p, i) => (
+            <div key={i}>{i + 1}: x={p.x} y={p.y}</div>
+          ))}
+          <div className="pinpoint-btn-row">
+            <button
+              disabled={pinpoints.length === 0}
+              onClick={() => {
+                const text = pinpoints.map((p, i) => `${i + 1}: (${p.x}, ${p.y})`).join("\n");
+                navigator.clipboard.writeText(text);
+              }}
+            >Copy</button>
+            <button onClick={() => setPinpoints([])}>Clear</button>
+            <button onClick={() => { setPinpointMode(false); setPinpoints([]); }}>Done</button>
+          </div>
+        </div>
+      )}
+
+      {/* Pinpoint toggle button */}
+      <button
+        className="pinpoint-toggle"
+        data-nohud
+        title="Pinpoint calibration tool"
+        onClick={(e) => { e.stopPropagation(); setPinpointMode((v) => !v); if (pinpointMode) setPinpoints([]); }}
+      >📍</button>
 
       <div className="page-counter" data-testid="page-counter">
         {position.panelIndex >= 0

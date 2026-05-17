@@ -472,6 +472,102 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
             if total_coverage < 0.35:
                 panels = []
 
+    # ── Dark-background fallback ─────────────────────────────────────────────
+    # When projection-cut yields 0 panels on a page with a dark background
+    # (diagonal gutters, bleed art, non-white separators), detect panel interiors
+    # by flood-filling the connected dark background from the outer margin and
+    # treating the isolated bright islands as panels.
+    # Guard: only runs when panels is still empty AND the outer border is dark.
+    if not panels:
+        _dark_thr = 120 # below this = dark background / border / gutter / mid-tone art
+        # Sample the outer frame (4% inset band) to check background brightness
+        _band = max(int(h * 0.04), 6)
+        _outer = np.concatenate([
+            gray[:_band, :].ravel(), gray[-_band:, :].ravel(),
+            gray[:, :_band].ravel(), gray[:, -_band:].ravel(),
+        ])
+        _dark_frac = float((_outer <= _dark_thr).mean())
+        if _dark_frac > 0.55:
+            # Build dark mask and find the connected background via connected components:
+            # Pad with a 1-pixel dark border so all four outer edges are in one component.
+            _dm = (gray <= _dark_thr).astype(np.uint8)
+            _padded = np.pad(_dm, 1, mode='constant', constant_values=1)
+            _, _cc = cv2.connectedComponents(_padded, connectivity=4)
+            _bg_label = int(_cc[0, 0])
+            _bg_mask = (_cc[1:-1, 1:-1] == _bg_label).astype(np.uint8)
+            # Panel interior = not background AND not dark
+            _interior = ((1 - _bg_mask) & (1 - _dm)).astype(np.uint8)
+            # (no morphological close: would bridge thin gutters between adjacent panels)
+            # Find candidate panel blobs
+            _nl, _, _sts, _ = cv2.connectedComponentsWithStats(_interior)
+            _blobs: List[Tuple[int, int, int, int]] = []
+            for _i in range(1, _nl):
+                _a = int(_sts[_i, cv2.CC_STAT_AREA])
+                if 0.04 <= _a / page_area <= 0.65:
+                    _bx = int(_sts[_i, cv2.CC_STAT_LEFT])
+                    _by = int(_sts[_i, cv2.CC_STAT_TOP])
+                    _bw2 = int(_sts[_i, cv2.CC_STAT_WIDTH])
+                    _bh2 = int(_sts[_i, cv2.CC_STAT_HEIGHT])
+                    _blobs.append((_bx, _by, _bx + _bw2, _by + _bh2))
+            _blobs.sort(key=lambda b: (b[1] + b[3]) // 2)
+            # Second-pass: split large merged blobs using dark-peak (border line)
+            # or bright-dip (column gap) profiles.
+            _dark_pf  = (_dm).astype(np.float32)
+            _bright_pf = (1 - _dm).astype(np.float32)
+            _split: List[Tuple[int, int, int, int]] = []
+            for (_bx0, _by0, _bx1, _by1) in _blobs:
+                _bh2, _bw2 = _by1 - _by0, _bx1 - _bx0
+                _done = False
+                # Horizontal split for tall blobs (panels stacked / diagonal gutter)
+                if _bh2 > h * 0.55:
+                    _dr = _dark_pf[_by0:_by1, _bx0:_bx1].mean(axis=1)
+                    _br = _bright_pf[_by0:_by1, _bx0:_bx1].mean(axis=1)
+                    _ms, _me = _bh2 // 4, _bh2 * 3 // 4
+                    _sd, _sb = _dr[_ms:_me], _br[_ms:_me]
+                    _med_d, _med_b = float(np.median(_dr)), float(np.median(_br))
+                    _pd = int(np.argmax(_sd))
+                    _pb = int(np.argmin(_sb))
+                    if _sd[_pd] > _med_d * 1.3:
+                        _sy = _ms + _pd
+                        _split += [(_bx0, _by0, _bx1, _by0 + _sy),
+                                   (_bx0, _by0 + _sy, _bx1, _by1)]
+                        _done = True
+                    elif _med_b > 0 and _sb[_pb] < _med_b * 0.60:
+                        _sy = _ms + _pb
+                        _split += [(_bx0, _by0, _bx1, _by0 + _sy),
+                                   (_bx0, _by0 + _sy, _bx1, _by1)]
+                        _done = True
+                # Vertical split for wide blobs (side-by-side panels)
+                if not _done and _bw2 > w * 0.55:
+                    _bc = _bright_pf[_by0:_by1, _bx0:_bx1].mean(axis=0)
+                    _ms, _me = _bw2 // 4, _bw2 * 3 // 4
+                    _sc = _bc[_ms:_me]
+                    _med_c = float(np.median(_bc))
+                    if _med_c > 0:
+                        _px = int(np.argmin(_sc))
+                        if _sc[_px] < _med_c * 0.60:
+                            _sx = _ms + _px
+                            _split += [(_bx0, _by0, _bx0 + _sx, _by1),
+                                       (_bx0 + _sx, _by0, _bx1,  _by1)]
+                            _done = True
+                if not _done:
+                    _split.append((_bx0, _by0, _bx1, _by1))
+            # Convert split results to Panel objects
+            _pad_ff = max(int(min(w, h) * 0.01), 5)
+            for (_rx0, _ry0, _rx1, _ry1) in _split:
+                _cw, _ch = _rx1 - _rx0, _ry1 - _ry0
+                if _cw < min_panel_w or _ch < min_panel_h:
+                    continue
+                if (_cw * _ch) / page_area < 0.05:
+                    continue
+                _px0c = max(0, _rx0 - _pad_ff)
+                _py0c = max(0, _ry0 - _pad_ff)
+                _px1c = min(w, _rx1 + _pad_ff)
+                _py1c = min(h, _ry1 + _pad_ff)
+                _cw2, _ch2 = _px1c - _px0c, _py1c - _py0c
+                panels.append(Panel(_px0c, _py0c, _cw2, _ch2,
+                                    _px0c + _cw2 // 2, _py0c + _ch2 // 2))
+
     # Sort into reading order (top-to-bottom, left-to-right).
     bucket = max(int(h * 0.08), 20)
     panels.sort(key=lambda p: (p.y // bucket, p.x))
