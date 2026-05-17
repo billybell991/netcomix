@@ -1,4 +1,10 @@
 import pg from "pg";
+import dns from "node:dns";
+
+// Railway private networking uses IPv6; force Node.js to prefer IPv6 over IPv4
+// so that postgres.railway.internal resolves to the actual Postgres container,
+// not the Railway HTTP load balancer (which also answers on 10.x IPv4).
+dns.setDefaultResultOrder("verbatim");
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) throw new Error("DATABASE_URL env var required");

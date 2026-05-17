@@ -97,22 +97,23 @@ app.get("/api/admin/tcptest", async (c) => {
   } catch (e: any) {
     return c.json({ dnsError: e.message });
   }
+  // Test IPv6 address specifically (Railway private network is IPv6)
+  const ipv6 = addrs.find((a) => a.family === 6)?.address;
+  if (!ipv6) return c.json({ addrs, error: "no IPv6 address found" });
   return new Promise((resolve) => {
-    const socket = net.createConnection({ host, port });
-    const chunks: Buffer[] = [];
+    const socket = net.createConnection({ host: ipv6, port, family: 6 });
     let timer: NodeJS.Timeout;
     socket.on("connect", () => {
-      // Send Postgres SSLRequest (8 bytes: length=8, code=80877103)
-      socket.write(Buffer.from([0, 0, 0, 8, 4, 210, 22, 47]));
-      timer = setTimeout(() => { socket.destroy(); resolve(c.json({ addrs, connected: true, timedOut: true })); }, 5000);
+      socket.write(Buffer.from([0, 0, 0, 8, 4, 210, 22, 47])); // SSLRequest
+      timer = setTimeout(() => { socket.destroy(); resolve(c.json({ addrs, ipv6, connected: true, timedOut: true })); }, 5000);
     });
     socket.on("data", (d) => {
       clearTimeout(timer); socket.destroy();
-      resolve(c.json({ addrs, connected: true, firstByte: d[0], firstByteChar: String.fromCharCode(d[0]), hex: d.slice(0, 20).toString("hex") }));
+      resolve(c.json({ addrs, ipv6, connected: true, firstByte: d[0], firstByteChar: String.fromCharCode(d[0]), hex: d.slice(0, 20).toString("hex") }));
     });
     socket.on("error", (e: any) => {
       clearTimeout(timer);
-      resolve(c.json({ addrs, connected: false, error: e.message, code: e.code }));
+      resolve(c.json({ addrs, ipv6, connected: false, error: e.message, code: e.code }));
     });
   });
 });
