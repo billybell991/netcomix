@@ -85,39 +85,6 @@ app.get("/api/admin/dbtest", async (c) => {
   }
 });
 
-// ─── Admin: raw TCP diagnostic ────────────────────────────────────────────────
-app.get("/api/admin/tcptest", async (c) => {
-  const net = await import("node:net");
-  const dns = await import("node:dns");
-  const host = "postgres.railway.internal";
-  const port = 5432;
-  let addrs: { address: string; family: number }[] = [];
-  try {
-    addrs = await dns.promises.lookup(host, { all: true }) as { address: string; family: number }[];
-  } catch (e: any) {
-    return c.json({ dnsError: e.message });
-  }
-  // Test IPv6 address specifically (Railway private network is IPv6)
-  const ipv6 = addrs.find((a) => a.family === 6)?.address;
-  if (!ipv6) return c.json({ addrs, error: "no IPv6 address found" });
-  return new Promise((resolve) => {
-    const socket = net.createConnection({ host: ipv6, port, family: 6 });
-    let timer: NodeJS.Timeout;
-    socket.on("connect", () => {
-      socket.write(Buffer.from([0, 0, 0, 8, 4, 210, 22, 47])); // SSLRequest
-      timer = setTimeout(() => { socket.destroy(); resolve(c.json({ addrs, ipv6, connected: true, timedOut: true })); }, 5000);
-    });
-    socket.on("data", (d) => {
-      clearTimeout(timer); socket.destroy();
-      resolve(c.json({ addrs, ipv6, connected: true, firstByte: d[0], firstByteChar: String.fromCharCode(d[0]), hex: d.slice(0, 20).toString("hex") }));
-    });
-    socket.on("error", (e: any) => {
-      clearTimeout(timer);
-      resolve(c.json({ addrs, ipv6, connected: false, error: e.message, code: e.code }));
-    });
-  });
-});
-
 // ─── Admin: bulk migrate ──────────────────────────────────────────────────────
 app.post("/api/admin/migrate", async (c) => {
   try {

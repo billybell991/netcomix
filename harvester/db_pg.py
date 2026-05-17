@@ -18,6 +18,10 @@ def pg_configured() -> bool:
 
 def _conn():
     import psycopg2  # type: ignore
+    # Railway internal URL (postgres.railway.internal) works without SSL.
+    # For local runs, append ?sslmode=require and ensure IPv4 connectivity
+    # (the public proxy at proxy.rlwy.net is an HTTP gateway; use railway run
+    # or a direct DB tunnel instead of the raw public URL).
     return psycopg2.connect(os.environ["DATABASE_URL"])
 
 

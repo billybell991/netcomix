@@ -49,11 +49,32 @@ def _download(svc, file_id: str, dest: Path) -> None:
     download(svc, file_id, dest)
 
 
+def _api_bulk_migrate(series_list: list[dict], issues_list: list[dict]) -> None:
+    """POST series + issues to the live API's /api/admin/migrate endpoint."""
+    import urllib.request
+    api_url = os.environ.get("API_URL", "https://netcomix-api-production.up.railway.app").rstrip("/")
+    access_code = os.environ.get("ACCESS_CODE", "")
+    url = f"{api_url}/api/admin/migrate"
+    body = json.dumps({"series": series_list, "issues": issues_list}).encode("utf-8")
+    req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("Content-Type", "application/json")
+    if access_code:
+        req.add_header("Authorization", f"Bearer {access_code}")
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        result = json.loads(resp.read())
+    print(f"  → API responded: {result}")
+
+
 def migrate() -> None:
     if not r2_configured():
         sys.exit("✗ R2 not configured — set R2_BUCKET, R2_ENDPOINT_URL, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY")
-    if not pg_configured():
-        sys.exit("✗ Postgres not configured — set DATABASE_URL")
+
+    # Support direct Postgres (DATABASE_URL) or API endpoint (API_URL)
+    use_api = bool(os.environ.get("API_URL")) or not pg_configured()
+    if use_api:
+        print("→ will write Postgres data via API endpoint")
+    elif not pg_configured():
+        sys.exit("✗ Set DATABASE_URL (direct) or API_URL (via API endpoint) for Postgres writes")
 
     # Load library.json for series-level metadata
     library_path = COMICS_DIR / "library.json"
@@ -61,16 +82,17 @@ def migrate() -> None:
         sys.exit(f"✗ {library_path} not found — run the harvester first")
     library = json.loads(library_path.read_text(encoding="utf-8"))
 
-    need_drive = any(
-        (COMICS_DIR / s["path"] / f).stat().st_size == 0  # placeholder
-        for s in library["series"]
-        for f in []
-    )
-    # We need Drive to download page images
-    print("→ connecting to Google Drive …")
-    svc = _drive_svc()
+    # Try connecting to Drive (optional — local files are preferred)
+    svc = None
+    try:
+        print("→ connecting to Google Drive (optional) …")
+        svc = _drive_svc()
+    except Exception as e:
+        print(f"  ! Drive unavailable ({e}) — will use local files only")
 
-    series_by_id: dict[str, dict] = {s["id"]: s for s in library["series"]}
+    # Accumulate DB payload
+    all_series: list[dict] = []
+    all_issues: list[dict] = []
 
     with tempfile.TemporaryDirectory() as td:
         tdp = Path(td)
@@ -105,9 +127,15 @@ def migrate() -> None:
                     file_id = page.get("fileId")
                     r2_key = f"{sid}/{iid}/{file_name}"
 
+                    local_page = issue_dir / file_name
+
                     if key_exists(r2_key):
-                        print(f"      {file_name} → already in R2, skipping download")
-                    elif file_id:
+                        print(f"      {file_name} → already in R2, skipping")
+                    elif local_page.exists():
+                        print(f"      {file_name} → uploading from local …", end="", flush=True)
+                        upload_jpeg(local_page, r2_key)
+                        print(" ✓")
+                    elif file_id and svc:
                         local_path = tdp / file_name
                         print(f"      {file_name} → downloading from Drive …", end="", flush=True)
                         _download(svc, file_id, local_path)
@@ -115,8 +143,8 @@ def migrate() -> None:
                         local_path.unlink(missing_ok=True)
                         print(" ✓")
                     else:
-                        # No Drive fileId — skip (may be a local-only page)
-                        print(f"      {file_name} → no fileId, skipping R2 upload")
+                        # No local file and no Drive fileId — skip
+                        print(f"      {file_name} → no local file or fileId, skipping R2 upload")
                         pages_out.append({
                             "file": file_name,
                             "r2Key": None,
@@ -139,32 +167,52 @@ def migrate() -> None:
                         "dominantColor": page.get("dominantColor"),
                     })
 
-                upsert_issue(
-                    issue_id=iid,
-                    series_id=sid,
-                    title=issue_data["title"],
-                    page_count=len(pages_out),
-                    pages=pages_out,
-                    cover_r2_key=cover_r2_key,
-                    cover_drive_id=issue_data["pages"][0].get("fileId") if issue_data["pages"] else None,
-                )
-                print(f"      → Postgres upserted ✓")
+                all_issues.append({
+                    "id": iid,
+                    "series_id": sid,
+                    "title": issue_data["title"],
+                    "page_count": len(pages_out),
+                    "pages": pages_out,
+                    "cover_r2_key": cover_r2_key,
+                    "cover_drive_id": issue_data["pages"][0].get("fileId") if issue_data["pages"] else None,
+                    "drive_file_id": None,
+                })
 
-            # Upsert series after all its issues are done so issue_count is accurate
+            # Series metadata (after all issues processed)
             first_issue = issue_dirs[0]
             first_issue_data = json.loads((first_issue / "issue.json").read_text(encoding="utf-8"))
             first_cover_key = f"{sid}/{first_issue_data['id']}/{first_issue_data['cover']}"
 
+            all_series.append({
+                "id": sid,
+                "title": series_entry["title"],
+                "path": series_entry["path"],
+                "issue_count": len(issue_dirs),
+                "cover_r2_key": first_cover_key,
+                "cover_drive_id": series_entry.get("coverFileId"),
+                "drive_folder_id": None,
+            })
+
+    # ── Write to Postgres ─────────────────────────────────────────────────────
+    print(f"\n→ writing {len(all_series)} series, {len(all_issues)} issues to Postgres …")
+    if use_api:
+        _api_bulk_migrate(all_series, all_issues)
+    else:
+        from db_pg import upsert_series, upsert_issue
+        for s in all_series:
             upsert_series(
-                series_id=sid,
-                title=series_entry["title"],
-                path=series_entry["path"],
-                issue_count=len(issue_dirs),
-                cover_r2_key=first_cover_key,
-                cover_drive_id=series_entry.get("coverFileId"),
-                drive_folder_id=None,
+                series_id=s["id"], title=s["title"], path=s["path"],
+                issue_count=s["issue_count"], cover_r2_key=s["cover_r2_key"],
+                cover_drive_id=s["cover_drive_id"], drive_folder_id=s["drive_folder_id"],
             )
-            print(f"  → series Postgres upserted ✓")
+        for i in all_issues:
+            upsert_issue(
+                issue_id=i["id"], series_id=i["series_id"], title=i["title"],
+                page_count=i["page_count"], pages=i["pages"],
+                cover_r2_key=i["cover_r2_key"], cover_drive_id=i["cover_drive_id"],
+                drive_file_id=i["drive_file_id"],
+            )
+        print("  → Postgres upserted ✓")
 
     print("\n✓ Migration complete!")
 
