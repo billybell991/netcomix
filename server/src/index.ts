@@ -78,7 +78,7 @@ app.get("/api/issue/:id", async (c) => {
 app.get("/health", (c) => c.json({ ok: true }));
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
-await migrate();
 serve({ fetch: app.fetch, port: PORT }, () => {
   console.log(`✓ NetComix API listening on port ${PORT}`);
+  migrate().catch((e) => console.error("Migration error (non-fatal):", e));
 });
