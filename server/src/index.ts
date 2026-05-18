@@ -2,6 +2,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { db, migrate, pool } from "./db.js";
+import { r2Configured, stageFile, listStaging } from "./r2.js";
 
 const app = new Hono();
 
@@ -92,6 +93,47 @@ app.get("/api/admin/issues", async (c) => {
     return c.json(issues);
   } catch (e) {
     console.error("GET /api/admin/issues", e);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// ─── Admin: stage CBZ/CBR uploads for GitHub Actions to process ──────────────
+const ALLOWED_EXTS = new Set([".cbz", ".cbr", ".zip", ".rar"]);
+
+app.post("/api/admin/stage", async (c) => {
+  if (!r2Configured()) {
+    return c.json({ error: "R2 not configured on this server" }, 503);
+  }
+  let body: Record<string, unknown>;
+  try {
+    body = await c.req.parseBody({ all: true });
+  } catch {
+    return c.json({ error: "Failed to parse upload" }, 400);
+  }
+  const raw = body["files"];
+  const files: File[] = (Array.isArray(raw) ? raw : [raw]).filter((f): f is File => f instanceof File);
+  if (!files.length) return c.json({ error: "No files provided" }, 400);
+
+  const staged: string[] = [];
+  for (const file of files) {
+    const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+    if (!ALLOWED_EXTS.has(ext)) {
+      return c.json({ error: `Unsupported file type: ${file.name}` }, 400);
+    }
+    const buf = Buffer.from(await file.arrayBuffer());
+    await stageFile(file.name, buf);
+    staged.push(file.name);
+    console.log(`[stage] ${file.name} (${(buf.length / 1024 / 1024).toFixed(1)} MB)`);
+  }
+  return c.json({ ok: true, staged });
+});
+
+app.get("/api/admin/staging", async (c) => {
+  if (!r2Configured()) return c.json([]);
+  try {
+    return c.json(await listStaging());
+  } catch (e) {
+    console.error("GET /api/admin/staging", e);
     return c.json({ error: "Internal server error" }, 500);
   }
 });

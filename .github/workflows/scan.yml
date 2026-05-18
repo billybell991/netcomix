@@ -55,6 +55,15 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: python harvester/harvest_drive.py
 
+      - name: Process R2 staged uploads
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: python harvester/harvest_r2_staging.py
+
       - name: Commit static manifests
         run: |
           git config user.name "netcomix-bot"

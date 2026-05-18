@@ -75,6 +75,31 @@ export async function apiAdminIssues(): Promise<AdminIssue[]> {
   return apiFetch<AdminIssue[]>("/api/admin/issues");
 }
 
+/** Upload CBZ/CBR files to R2 staging. Calls onProgress(0–1) as bytes are sent. */
+export async function apiStageFiles(
+  files: File[],
+  onProgress: (pct: number) => void,
+): Promise<{ staged: string[] }> {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    for (const f of files) form.append("files", f);
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${base()}/api/admin/stage`);
+    const code = getConfig().accessCode;
+    if (code) xhr.setRequestHeader("Authorization", `Bearer ${code}`);
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(JSON.parse(xhr.responseText));
+      } else {
+        reject(new Error(`Upload failed: ${xhr.status} ${xhr.responseText}`));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Upload network error"));
+    xhr.send(form);
+  });
+}
+
 export async function apiIssue(id: string): Promise<IssueManifest> {
   const data = await apiFetch<ApiIssue>(`/api/issue/${id}`);
   return {
