@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { latestScanRun, triggerScan, type WorkflowRun } from "../github-actions";
+import { latestScanRun, triggerScan, triggerRedetect, latestRedetectRun, type WorkflowRun } from "../github-actions";
 import { isGithubConfigured, isApiConfigured } from "../config";
 import { apiAdminIssues, apiStageFiles, type AdminIssue } from "../api";
 
@@ -38,10 +38,13 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
   const [dispatching, setDispatching] = useState(false);
   const triggeredId = useRef<number | null>(null);
 
-  // Issues list for re-detect helper
+  // Issues list + re-detect
   const [adminIssues, setAdminIssues] = useState<AdminIssue[] | null>(null);
   const [issuesError, setIssuesError] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [redetectingId, setRedetectingId] = useState<string | null>(null);
+  const [redetectDoneId, setRedetectDoneId] = useState<string | null>(null);
+  const [redetectErrorId, setRedetectErrorId] = useState<string | null>(null);
+  const [redetectRun, setRedetectRun] = useState<WorkflowRun | null>(null);
 
   const ghConfigured = isGithubConfigured();
   const apiReady = isApiConfigured();
@@ -113,6 +116,42 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
       .then(setAdminIssues)
       .catch((e) => setIssuesError(String(e)));
   }, [apiReady]);
+
+  const onRedetect = async (issueId: string) => {
+    if (redetectingId) return;
+    setRedetectingId(issueId);
+    setRedetectDoneId(null);
+    setRedetectErrorId(null);
+    try {
+      await triggerRedetect(issueId);
+      // Poll until the run appears and completes
+      let attempts = 0;
+      const poll = window.setInterval(async () => {
+        attempts++;
+        const r = await latestRedetectRun().catch(() => null);
+        if (r) setRedetectRun(r);
+        if (r && r.status === "completed") {
+          window.clearInterval(poll);
+          setRedetectingId(null);
+          if (r.conclusion === "success") {
+            setRedetectDoneId(issueId);
+            setTimeout(() => setRedetectDoneId(null), 4000);
+          } else {
+            setRedetectErrorId(issueId);
+            setTimeout(() => setRedetectErrorId(null), 6000);
+          }
+        }
+        if (attempts >= 120) { // 10 min timeout
+          window.clearInterval(poll);
+          setRedetectingId(null);
+        }
+      }, 5000);
+    } catch (e) {
+      setRedetectErrorId(issueId);
+      setRedetectingId(null);
+      setTimeout(() => setRedetectErrorId(null), 6000);
+    }
+  };
 
   const onScan = async () => {
     setDispatching(true);
@@ -314,47 +353,56 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
         </section>
 
         <section style={{ marginBottom: 24 }}>
-          <h2 style={{ color: "#ddd" }}>Issues — re-detect helper</h2>
-          <p style={{ color: "#aaa", fontSize: 13 }}>
-            To re-detect panels for a single issue, copy its command and run it in your terminal
-            (requires env vars set locally).
-          </p>
+          <h2 style={{ color: "#ddd" }}>Re-detect panels</h2>
           {!apiReady && <p style={{ color: "#666", fontSize: 13 }}>Configure API URL in Setup to see the issue list.</p>}
+          {!ghConfigured && apiReady && <p style={{ color: "#888", fontSize: 13 }}>Configure GitHub in Setup to enable re-detect.</p>}
           {issuesError && <p style={{ color: "#e53935", fontSize: 13 }}>{issuesError}</p>}
           {apiReady && !adminIssues && !issuesError && <p style={{ color: "#666", fontSize: 13 }}>Loading…</p>}
-          {adminIssues && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 360, overflowY: "auto" }}>
-              {adminIssues.map((iss) => (
-                <div key={iss.id} style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  background: "#111", borderRadius: 6, padding: "6px 10px",
-                  border: "1px solid #222",
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: "#ccc", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {iss.seriesTitle} — {iss.title}
+          {adminIssues && adminIssues.length === 0 && <p style={{ color: "#666", fontSize: 13 }}>No issues yet — upload some comics first.</p>}
+          {redetectRun && redetectingId && (
+            <div style={{ background: "#111", border: "1px solid #333", borderRadius: 6, padding: "6px 10px", marginBottom: 8, fontSize: 12, color: "#aaa" }}>
+              Re-detect job: <span style={{ color: redetectRun.status === "completed" && redetectRun.conclusion === "success" ? "#4caf50" : redetectRun.status === "completed" ? "#e53935" : "#ffb300" }}>
+                {redetectRun.status === "completed" ? redetectRun.conclusion : redetectRun.status}
+              </span>
+              {" "}<a href={redetectRun.html_url} target="_blank" rel="noreferrer" style={{ color: "#1f6feb" }}>View →</a>
+            </div>
+          )}
+          {adminIssues && adminIssues.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 400, overflowY: "auto" }}>
+              {adminIssues.map((iss) => {
+                const isRunning = redetectingId === iss.id;
+                const isDone = redetectDoneId === iss.id;
+                const isErr = redetectErrorId === iss.id;
+                return (
+                  <div key={iss.id} style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    background: "#111", borderRadius: 6, padding: "8px 10px",
+                    border: `1px solid ${isDone ? "#4caf5055" : isErr ? "#e5393555" : "#222"}`,
+                    transition: "border-color 0.3s",
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: "#ccc", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {iss.seriesTitle} — {iss.title}
+                      </div>
+                      <div style={{ color: "#555", fontSize: 11 }}>{iss.pageCount} pages · {iss.id}</div>
                     </div>
-                    <div style={{ color: "#666", fontSize: 11 }}>{iss.pageCount} pages</div>
+                    <button
+                      disabled={!ghConfigured || !!redetectingId}
+                      onClick={() => onRedetect(iss.id)}
+                      style={{
+                        background: isDone ? "rgba(76,175,80,0.2)" : isErr ? "rgba(229,57,53,0.2)" : isRunning ? "rgba(255,179,0,0.15)" : "rgba(31,111,235,0.15)",
+                        border: `1px solid ${isDone ? "#4caf50" : isErr ? "#e53935" : isRunning ? "#ffb300" : "rgba(31,111,235,0.5)"}`,
+                        borderRadius: 5, color: isDone ? "#4caf50" : isErr ? "#e53935" : isRunning ? "#ffb300" : "#60a5fa",
+                        fontSize: 11, padding: "5px 10px", cursor: redetectingId ? "default" : "pointer",
+                        whiteSpace: "nowrap", minWidth: 80, transition: "all 0.2s",
+                      }}
+                    >
+                      {isRunning && <span className="nc-spinner" />}
+                      {isDone ? "✓ Done" : isErr ? "✗ Failed" : isRunning ? "Running…" : "Re-detect"}
+                    </button>
                   </div>
-                  <button
-                    style={{
-                      background: copiedId === iss.id ? "rgba(76,175,80,0.25)" : "rgba(255,255,255,0.08)",
-                      border: `1px solid ${copiedId === iss.id ? "#4caf50" : "rgba(255,255,255,0.18)"}`,
-                      borderRadius: 5, color: copiedId === iss.id ? "#4caf50" : "#aaa",
-                      fontSize: 11, padding: "4px 8px", cursor: "pointer", whiteSpace: "nowrap",
-                      transition: "all 0.2s",
-                    }}
-                    title={`python harvester/redetect_all.py --issue ${iss.id}`}
-                    onClick={() => {
-                      navigator.clipboard.writeText(`python harvester/redetect_all.py --issue ${iss.id}`);
-                      setCopiedId(iss.id);
-                      setTimeout(() => setCopiedId(null), 2000);
-                    }}
-                  >
-                    {copiedId === iss.id ? "✓ Copied" : "⎘ Re-detect"}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

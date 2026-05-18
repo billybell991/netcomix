@@ -1,0 +1,42 @@
+name: Re-detect Panels
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_id:
+        description: "Issue ID to re-detect (e.g. tales-from-the-crypt-v2-01)"
+        required: true
+        type: string
+
+concurrency:
+  group: redetect-${{ inputs.issue_id }}
+  cancel-in-progress: true
+
+jobs:
+  redetect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install unrar
+        run: sudo apt-get update && sudo apt-get install -y unrar
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: harvester/requirements.txt
+
+      - name: Install Python deps
+        run: pip install -r harvester/requirements.txt
+
+      - name: Re-detect panels
+        env:
+          ISSUE_ID: ${{ inputs.issue_id }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: python harvester/redetect_issue.py
