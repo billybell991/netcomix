@@ -215,12 +215,14 @@
 
 .hud-top { display: flex; align-items: center; gap: 12px; padding: 16px; }
 .hud-top .back-btn {
-  background: rgba(255,255,255,0.15);
-  border: none;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.45);
   border-radius: 999px;
   padding: 10px 16px;
   color: #fff;
+  cursor: pointer;
 }
+.hud-top .back-btn:hover { background: rgba(255,255,255,0.28); }
 .hud-top .title { font-weight: 600; flex: 1; }
 .hud-bottom {
   margin-top: auto;
