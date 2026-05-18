@@ -187,13 +187,6 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     # content_mask: 1 where there's ink/art, 0 where the page is white (gutter).
     content = (gray < gutter_threshold).astype(np.uint8)
 
-    # Near-pure-black mask — used only for dark-separator detection (Pass 2.0).
-    # Unlike 'content' (gray < 230) which treats ANY colored pixel as ink,
-    # this mask only triggers on pixels that are truly black or near-black.
-    # This prevents hot-pink / teal / blue comic art from looking like
-    # 100% ink and thus masking the actual black separator bands.
-    very_dark = (gray < 25).astype(np.uint8)
-
     # Knobs (relative to page size so they scale with resolution):
     #   min_gutter:    how many consecutive near-empty rows/cols count as a gutter
     #   min_panel_w/h: smallest plausible panel
@@ -235,26 +228,6 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                 i += 1
         return runs
 
-    def find_dark_sep_runs(profile: np.ndarray, threshold: float, min_run: int, max_run: int) -> List[Tuple[int, int]]:
-        """Return narrow high-density near-pure-black bands — used for dark-background
-        comics where panel separators are solid black rather than white gutters.
-        `profile` must be computed from the `very_dark` (gray<25) mask, not `content`."""
-        runs: List[Tuple[int, int]] = []
-        i = 0
-        n = len(profile)
-        while i < n:
-            if profile[i] >= threshold:
-                j = i
-                while j < n and profile[j] >= threshold:
-                    j += 1
-                run_len = j - i
-                if min_run <= run_len <= max_run:
-                    runs.append((i, j))
-                i = j
-            else:
-                i += 1
-        return runs
-
     def split(x0: int, y0: int, x1: int, y1: int, axis: str, depth: int) -> List[Tuple[int, int, int, int]]:
         """Recursively split a region. axis is the *preferred* axis to try first
         ('h' = look for horizontal gutters to make rows; 'v' = vertical gutters
@@ -271,13 +244,7 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
             if try_axis == "h":
                 # Horizontal gutters → bands of empty rows → row split
                 row_ink = region.sum(axis=1) / rw  # fraction of ink per row
-                if dark_h_sep:
-                    # Dark-separator mode: use pure-black profile to find solid black bands.
-                    region_dark = very_dark[y0:y1, x0:x1]
-                    row_dark = region_dark.sum(axis=1) / rw
-                    runs = find_dark_sep_runs(row_dark, _DARK_BAND_DENSITY, min_gutter_v, _max_dark_sep_h)
-                else:
-                    runs = find_gutter_runs(row_ink, ink_ratio, min_gutter_v)
+                runs = find_gutter_runs(row_ink, ink_ratio, min_gutter_v)
                 # Convert gutter runs into row strips (skip strips that are too short)
                 strips: List[Tuple[int, int]] = []
                 prev = 0
@@ -287,10 +254,13 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                     prev = e
                 if rh - prev >= min_panel_h:
                     strips.append((prev, rh))
-                # Shallow fallback: only for white-gutter mode. Dark-sep mode doesn't
-                # need a fallback — if ≥2 black bands were detected at page level,
-                # they'll be found at sub-region level too.
-                if not dark_h_sep and len(strips) < 2 and depth <= 2:
+                # Shallow fallback: subtle-border pages (e.g. dark backgrounds) have
+                # interior gutters at higher ink fractions; try a more permissive
+                # threshold when the initial scan didn't produce a useful split.
+                # Applies at depth 0-1 (initial page/sub-strip splits) and depth 2
+                # (sub-column splits) to handle 2×2 grids where the inner horizontal
+                # gutter inside each column is bordered and reads as high-ink.
+                if len(strips) < 2 and depth <= 2:
                     runs2 = find_gutter_runs(row_ink, max(ink_ratio, 0.30), min_gutter_v)
                     strips2: List[Tuple[int, int]] = []
                     prev2 = 0
@@ -319,12 +289,7 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
             else:
                 # Vertical gutters → bands of empty cols → column split
                 col_ink = region.sum(axis=0) / rh
-                if dark_v_sep:
-                    region_dark = very_dark[y0:y1, x0:x1]
-                    col_dark = region_dark.sum(axis=0) / rh
-                    runs = find_dark_sep_runs(col_dark, _DARK_BAND_DENSITY, min_gutter_h, _max_dark_sep_w)
-                else:
-                    runs = find_gutter_runs(col_ink, ink_ratio, min_gutter_h)
+                runs = find_gutter_runs(col_ink, ink_ratio, min_gutter_h)
                 strips_v: List[Tuple[int, int]] = []
                 prev = 0
                 for s, e in runs:
@@ -333,8 +298,9 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                     prev = e
                 if rw - prev >= min_panel_w:
                     strips_v.append((prev, rw))
-                # Shallow fallback (vertical axis): only for white-gutter mode at depth 0.
-                if not dark_v_sep and len(strips_v) < 2 and depth == 0:
+                # Shallow fallback (vertical axis): only at depth 0 — applying it
+                # at depth 1 risks false vertical splits within panel artwork.
+                if len(strips_v) < 2 and depth == 0:
                     runs2_v = find_gutter_runs(col_ink, max(ink_ratio, 0.30), min_gutter_h)
                     strips2_v: List[Tuple[int, int]] = []
                     prev2_v = 0
@@ -377,52 +343,6 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     else:
         x0, y0, x1, y1 = 0, 0, w, h
 
-    # ── Auto-detect dark-separator style (Pass 2.0) ───────────────────────
-    # Some comics (e.g. The Good Asian) use solid black bands between panels
-    # instead of white gutters. Signature: ≥2 narrow high-density near-pure-black
-    # bands in the full-page row/col profile. We use the 'very_dark' (gray<25)
-    # mask so that colored art (pink, teal, blue) does not interfere.
-    _DARK_BAND_DENSITY = 0.85  # ≥85% of pixels in the band must be near-pure-black
-    _max_dark_sep_h = max(int(h * 0.06), 20)  # max band height for horizontal sep
-    _max_dark_sep_w = max(int(w * 0.06), 20)  # max band width for vertical sep
-
-    dark_row_all = very_dark.sum(axis=1) / w
-    dark_col_all = very_dark.sum(axis=0) / h
-
-    def _count_dark_bands(profile: np.ndarray, min_run: int, max_run: int,
-                           edge_guard: int = 0) -> int:
-        """Count narrow high-density dark bands. With edge_guard > 0, bands that
-        start or end within the outer edge_guard pixels are excluded (they are
-        page-border runs, not real panel separators)."""
-        n, count, i = len(profile), 0, 0
-        while i < n:
-            if profile[i] >= _DARK_BAND_DENSITY:
-                j = i
-                while j < n and profile[j] >= _DARK_BAND_DENSITY:
-                    j += 1
-                if min_run <= (j - i) <= max_run:
-                    if edge_guard == 0 or (i >= edge_guard and j <= n - edge_guard):
-                        count += 1
-                i = j
-            else:
-                i += 1
-        return count
-
-    # For dark_h_sep we only count interior bands (outside the outer 10% of page
-    # height) so that a thick top/bottom border does not fake a separator count.
-    _h_edge = max(int(h * 0.10), 20)
-    dark_h_sep = (
-        _count_dark_bands(dark_row_all, min_gutter_v, _max_dark_sep_h,
-                          edge_guard=_h_edge) >= 2
-        # Guard: if most of the page is near-pure-black, it's a dark background
-        # page (credits, title, splash) — the "bands" are not real panel separators.
-        and float((dark_row_all >= _DARK_BAND_DENSITY).mean()) < 0.30
-    )
-    dark_v_sep = (
-        _count_dark_bands(dark_col_all, min_gutter_h, _max_dark_sep_w) >= 2
-        and float((dark_col_all >= _DARK_BAND_DENSITY).mean()) < 0.30
-    )
-
     rects = split(x0, y0, x1, y1, "h", 0)
 
     page_area = w * h
@@ -435,8 +355,8 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
         # Must meet minimum dimension thresholds.
         if cw < min_panel_w or ch < min_panel_h:
             continue
-        # Must be at least 4 % of total page area (kills thumbnail-sized boxes).
-        if (cw * ch) / page_area < 0.04:
+        # Must be at least 8 % of total page area (kills thumbnail-sized boxes).
+        if (cw * ch) / page_area < 0.08:
             continue
         # Sane aspect ratio: 0.15 ≤ w/h ≤ 6.0  (drops degenerate slivers).
         aspect = cw / ch if ch > 0 else 0
