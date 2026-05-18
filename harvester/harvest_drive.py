@@ -251,7 +251,7 @@ def detect_panels(image_path: Path) -> tuple[int, int, list[Panel], str]:
 
 # ─── Series / issue parsing ──────────────────────────────────────────────
 
-ISSUE_RE = re.compile(r"^(.*?)\s+(\d+)(?:\s*\(.*\))?\s*\.")  # "Savage Tales 01 (1985).cbr" → ("Savage Tales", "01")
+ISSUE_RE = re.compile(r"^(.*?)\s+#?(\d+)(?:\s*\(.*\))?\s*\.")  # "Savage Tales 01 (1985).cbr" or "Tales from the Crypt #1.cbr"
 
 
 def parse_archive_name(name: str) -> tuple[str, str]:

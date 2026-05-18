@@ -41,6 +41,7 @@ jobs:
           pip install -r harvester/requirements.txt
           pip install google-api-python-client google-auth
       - name: Run drive harvester
+        continue-on-error: true
         env:
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
           GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
