@@ -67,7 +67,7 @@ export function SetupView({ onSaved, onSkip }: Props) {
               Skip (use demo)
             </button>
           )}
-          <button className="back-btn" onClick={save} data-testid="setup-save" disabled={!!error || !anyValid}>
+          <button className="btn-primary" onClick={save} data-testid="setup-save" disabled={!!error || !anyValid}>
             Save
           </button>
         </div>
