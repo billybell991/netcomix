@@ -4,7 +4,7 @@
 import { isApiConfigured, isDriveConfigured } from "./config";
 import { apiLibrary, apiSeries, apiIssue } from "./api";
 import { fetchJsonById, mediaUrl } from "./drive";
-import type { IssueIndexEntry, IssueManifest, Library, PageManifest, SeriesEntry, SeriesIndex } from "./types";
+import type { IssueIndexEntry, IssueManifest, Library, PageManifest, Panel, SeriesEntry, SeriesIndex } from "./types";
 
 // ─── Static-mode (kept for local dev / demo fallback) ──────────────────────
 
@@ -38,16 +38,57 @@ export async function fetchSeries(seriesPath: string, _series?: SeriesEntry): Pr
   return fetchJson<SeriesIndex>(`${COMICS_BASE}${seriesPath}/series.json`);
 }
 
+/**
+ * For panels that span ≥85% of the page width, insert two virtual sub-snaps
+ * after the full-panel snap: left half then right half. This lets the reader
+ * progress through wide/splash panels at a legible zoom level.
+ * No DB changes required — expansion is applied at read-time.
+ */
+const WIDE_PANEL_RATIO = 0.85;
+
+function expandWidePanels(manifest: IssueManifest): IssueManifest {
+  const pages = manifest.pages.map((page) => {
+    if (!page.width || page.panels.length === 0) return page;
+    const expanded: Panel[] = [];
+    for (const panel of page.panels) {
+      expanded.push(panel);
+      if (panel.w / page.width >= WIDE_PANEL_RATIO) {
+        const halfW = Math.round(panel.w / 2);
+        expanded.push(
+          {
+            x: panel.x,
+            y: panel.y,
+            w: halfW,
+            h: panel.h,
+            centerX: Math.round(panel.x + halfW / 2),
+            centerY: panel.centerY,
+          },
+          {
+            x: panel.x + halfW,
+            y: panel.y,
+            w: halfW,
+            h: panel.h,
+            centerX: Math.round(panel.x + halfW + halfW / 2),
+            centerY: panel.centerY,
+          },
+        );
+      }
+    }
+    return { ...page, panels: expanded };
+  });
+  return { ...manifest, pages };
+}
+
 export async function fetchIssue(issuePath: string, issue?: IssueIndexEntry): Promise<IssueManifest> {
   if (isApiConfigured()) {
     // issue.id is the bare issue id; issuePath is "series/issue-id"
     const id = issue?.id ?? issuePath.split("/").pop() ?? issuePath;
-    return apiIssue(id);
+    return expandWidePanels(await apiIssue(id));
   }
   if (issue?.issueFileId && isDriveConfigured()) {
-    return fetchJsonById<IssueManifest>(issue.issueFileId);
+    return expandWidePanels(await fetchJsonById<IssueManifest>(issue.issueFileId));
   }
-  return fetchJson<IssueManifest>(`${COMICS_BASE}${issuePath}/issue.json`);
+  return expandWidePanels(await fetchJson<IssueManifest>(`${COMICS_BASE}${issuePath}/issue.json`));
 }
 
 /** URL for a page image — R2 URL (api-mode), drive media URL, or static path. */
