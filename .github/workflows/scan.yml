@@ -1,34 +1,24 @@
-name: Scan Drive
+name: Process uploads
 
 on:
   workflow_dispatch:
-    inputs:
-      folder_id:
-        description: "Drive folder ID (overrides repo variable DRIVE_FOLDER_ID)"
-        required: false
-        type: string
-      limit:
-        description: "Optional cap — process only first N archives (proof-of-concept runs)"
-        required: false
-        type: string
-        default: ""
 
 concurrency:
-  group: drive-scan
+  group: scan
   cancel-in-progress: false
 
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 120
     permissions:
       contents: write
       actions: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install unrar
-        run: sudo apt-get update && sudo apt-get install -y unrar
+      - name: Install 7z
+        run: sudo apt-get update && sudo apt-get install -y p7zip-full
 
       - uses: actions/setup-python@v5
         with:
@@ -37,26 +27,9 @@ jobs:
           cache-dependency-path: harvester/requirements.txt
 
       - name: Install Python deps
-        run: |
-          pip install -r harvester/requirements.txt
-          pip install google-api-python-client google-auth
-      - name: Run drive harvester
-        continue-on-error: true
-        env:
-          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
-          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
-          GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
-          DRIVE_FOLDER_ID: ${{ inputs.folder_id || vars.DRIVE_FOLDER_ID || '12Sz-mb5iQvWJm5tCodTCIYMRPK9fxZiv' }}
-          LIMIT: ${{ inputs.limit }}
-          # Optional: R2 + Postgres output — set these secrets to enable Railway backend sync
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: python harvester/harvest_drive.py
+        run: pip install -r harvester/requirements.txt
 
-      - name: Process R2 staged uploads
+      - name: Process staged uploads
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
@@ -74,17 +47,9 @@ jobs:
             echo "No manifest changes to commit."
           else
             git commit -m "scan: refresh comic manifests"
-            # Rebase on top of any concurrent commits before pushing.
             for i in 1 2 3 4 5; do
               git pull --rebase origin main && git push && break
               echo "push attempt $i failed, retrying..."
               sleep 3
             done
-            echo "trigger_deploy=true" >> "$GITHUB_ENV"
           fi
-
-      - name: Trigger deploy workflow
-        if: env.trigger_deploy == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run deploy.yml --ref main

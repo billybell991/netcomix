@@ -202,13 +202,31 @@ def extract_pages(archive: Path, out_dir: Path) -> list[Path]:
                 _write_jpeg(data, p)
                 pages.append(p)
     elif ext in {".cbr", ".rar"}:
-        with rarfile.RarFile(archive) as rf:
-            names = sorted(n for n in rf.namelist() if Path(n).suffix.lower() in PAGE_EXTS)
-            for i, name in enumerate(names, 1):
-                data = rf.read(name)
-                p = out_dir / f"page-{i:03d}.jpg"
-                _write_jpeg(data, p)
-                pages.append(p)
+        # Use 7z (pre-installed on GitHub Actions runners; install p7zip-full on Linux).
+        # More reliable than rarfile+unrar across platforms.
+        import subprocess, shutil
+        seven_z = (
+            shutil.which("7z") or shutil.which("7zz")
+            or (r"C:\Program Files\7-Zip\7z.exe" if sys.platform == "win32" else None)
+        )
+        if not seven_z:
+            print(f"  ! 7z not found — cannot extract {archive.name}", file=sys.stderr)
+            return []
+        extract_dir = out_dir / "_extracted"
+        extract_dir.mkdir(exist_ok=True)
+        subprocess.run(
+            [seven_z, "e", str(archive), f"-o{extract_dir}", "-y"],
+            check=True, capture_output=True,
+        )
+        raw_pages = sorted(
+            p for p in extract_dir.iterdir()
+            if p.suffix.lower() in PAGE_EXTS
+        )
+        for i, src in enumerate(raw_pages, 1):
+            p = out_dir / f"page-{i:03d}.jpg"
+            _write_jpeg(src.read_bytes(), p)
+            pages.append(p)
+        shutil.rmtree(extract_dir, ignore_errors=True)
     else:
         print(f"  ! Unsupported archive type: {archive.name}", file=sys.stderr)
     return pages
@@ -251,7 +269,7 @@ def detect_panels(image_path: Path) -> tuple[int, int, list[Panel], str]:
 
 # ─── Series / issue parsing ──────────────────────────────────────────────
 
-ISSUE_RE = re.compile(r"^(.*?)\s+#?(\d+)(?:\s*\(.*\))?\s*\.")  # "Savage Tales 01 (1985).cbr" or "Tales from the Crypt #1.cbr"
+ISSUE_RE = re.compile(r"^(.*?)\s+#?(\d+)(?:\s*[\(\[].*?[\)\]])*\s*\.")  # handles parens, brackets, multiple suffix groups
 
 
 def parse_archive_name(name: str) -> tuple[str, str]:

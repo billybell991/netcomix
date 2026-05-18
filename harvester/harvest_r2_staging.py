@@ -132,19 +132,19 @@ def process_staging() -> None:
                 print(f"  ↳ {page_path.name}: {len(panels)} panels", flush=True)
 
             if pg_configured():
+                upsert_series(
+                    series_id=series_id,
+                    title=series_title,
+                    path=series_id,
+                    issue_count=1,
+                    cover_r2_key=cover_r2_key,
+                )
                 upsert_issue(
                     issue_id=issue_id,
                     series_id=series_id,
                     title=issue_label,
                     page_count=len(pages_pg),
                     pages=pages_pg,
-                    cover_r2_key=cover_r2_key,
-                )
-                upsert_series(
-                    series_id=series_id,
-                    title=series_title,
-                    path=series_id,
-                    issue_count=1,
                     cover_r2_key=cover_r2_key,
                 )
                 print(f"  [pg] upserted ✓", flush=True)

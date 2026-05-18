@@ -282,34 +282,6 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
         </section>
 
         <section style={{ marginBottom: 24 }}>
-          <h2 style={{ color: "#ddd" }}>Scan Drive folder</h2>
-          <p style={{ color: "#aaa" }}>
-            Triggers the GitHub Action that downloads new <code>.cbz</code>/<code>.cbr</code> files from
-            your Drive folder, extracts panels, and uploads JPEG pages + manifests back to Drive.
-          </p>
-          <button
-            className="back-btn"
-            onClick={onScan}
-            disabled={buttonBusy}
-            data-testid="scan-btn"
-            title={!ghConfigured ? "Configure GitHub owner, repo, and token in Setup first" : undefined}
-            style={{ background: buttonBusy ? "#555" : "#1f6feb", color: "#fff", border: "none", padding: "10px 16px", transition: "background 0.2s" }}
-          >
-            {dispatching && <span className="nc-spinner" />}
-            {dispatching ? "Triggering…" : (buttonBusy && ghConfigured) ? "In progress…" : "Scan now"}
-          </button>
-          {!ghConfigured && (
-            <p style={{ color: "#888", fontSize: 13, marginTop: 8 }}>
-              GitHub not configured — add your owner, repo, and token in{" "}
-              <button
-                style={{ background: "none", border: "none", color: "#1f6feb", cursor: "pointer", padding: 0, fontSize: 13 }}
-                onClick={onOpenSetup}
-              >Setup</button>.
-            </p>
-          )}
-        </section>
-
-        <section style={{ marginBottom: 24 }}>
           <h2 style={{ color: "#ddd" }}>Latest run</h2>
           {error && <pre data-testid="admin-error" style={{ color: "#e53935", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{error}</pre>}
           {!run && !error && <p style={{ color: "#666" }}>{ghConfigured ? "No scans yet." : "Configure GitHub to see scan history."}</p>}
