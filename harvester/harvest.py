@@ -257,9 +257,10 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                 # Shallow fallback: subtle-border pages (e.g. dark backgrounds) have
                 # interior gutters at higher ink fractions; try a more permissive
                 # threshold when the initial scan didn't produce a useful split.
-                # Applies at depth 0 (initial page split) and depth 1 (first sub-strips)
-                # to handle gutters that live one level inside the initial margins.
-                if len(strips) < 2 and depth <= 1:
+                # Applies at depth 0-1 (initial page/sub-strip splits) and depth 2
+                # (sub-column splits) to handle 2×2 grids where the inner horizontal
+                # gutter inside each column is bordered and reads as high-ink.
+                if len(strips) < 2 and depth <= 2:
                     runs2 = find_gutter_runs(row_ink, max(ink_ratio, 0.30), min_gutter_v)
                     strips2: List[Tuple[int, int]] = []
                     prev2 = 0
@@ -436,6 +437,30 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                     continue  # replaced by sub-panels
         panels_split.append(p)
     panels = panels_split
+
+    # ── Pass 1.7: remove panels substantially contained in a larger sibling ──
+    # Projection-cut is recursive and should not produce overlapping rects, but
+    # bbox-tightening on sub-strips can create a smaller rect whose ink footprint
+    # nearly coincides with the interior of a larger detected panel (e.g. a title
+    # banner whose tight horizontal bbox sits inside a big splash panel below it).
+    # Remove any panel where ≥80% of its area is covered by a larger sibling.
+    if len(panels) >= 2:
+        def _isect(a: Panel, b: Panel) -> int:
+            ix0 = max(a.x, b.x); ix1 = min(a.x + a.w, b.x + b.w)
+            iy0 = max(a.y, b.y); iy1 = min(a.y + a.h, b.y + b.h)
+            return max(0, ix1 - ix0) * max(0, iy1 - iy0)
+        keep = [True] * len(panels)
+        for i, pi in enumerate(panels):
+            ai = pi.w * pi.h
+            for j, pj in enumerate(panels):
+                if i == j or not keep[j]:
+                    continue
+                if pj.w * pj.h <= ai:
+                    continue  # only a larger sibling can contain pi
+                if _isect(pi, pj) / ai >= 0.80:
+                    keep[i] = False
+                    break
+        panels = [p for k, p in zip(keep, panels) if k]
 
     # ── Pass 2: catalog / gallery / splash heuristics ────────────────────
     # Western comics: 3-6 panels is typical, 9 is a hard practical ceiling.
