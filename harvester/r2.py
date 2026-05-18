@@ -67,3 +67,20 @@ def key_exists(r2_key: str) -> bool:
         if e.response["Error"]["Code"] in ("404", "NoSuchKey"):
             return False
         raise
+
+
+def delete_prefix(prefix: str) -> int:
+    """Delete all R2 objects whose key starts with *prefix*. Returns count deleted."""
+    bucket = os.environ["R2_BUCKET"]
+    client = _client()
+    paginator = client.get_paginator("list_objects_v2")
+    keys = []
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            keys.append({"Key": obj["Key"]})
+    if not keys:
+        return 0
+    # S3/R2 delete_objects accepts up to 1000 keys per call
+    for i in range(0, len(keys), 1000):
+        client.delete_objects(Bucket=bucket, Delete={"Objects": keys[i:i+1000]})
+    return len(keys)

@@ -434,6 +434,7 @@ def _publish_manifest(svc, root_folder_id: str, series_map: dict) -> None:
             "issueCount": len(s["issues"]),
             "path": sid,
             "seriesFileId": series_file_id,
+            "_driveSourced": True,  # sentinel — lets the merge drop removed Drive series
         })
 
     library_doc = {
@@ -450,7 +451,9 @@ def _publish_manifest(svc, root_folder_id: str, series_map: dict) -> None:
             existing = json.loads(existing_path.read_text(encoding="utf-8"))
             drive_ids = {s["id"] for s in library_series}
             for s in existing.get("series", []):
-                if s.get("id") and s["id"] not in drive_ids:
+                # Keep non-Drive static entries (e.g. demo-series).
+                # Drop entries that were Drive-sourced but are no longer in Drive.
+                if s.get("id") and s["id"] not in drive_ids and not s.get("_driveSourced"):
                     library_doc["series"].append(s)
             library_doc["series"].sort(key=lambda s: s["title"])
         except Exception as e:
@@ -540,9 +543,12 @@ def _write_r2_pg(
 
 
 def _publish_manifest_r2_pg(series_map: dict) -> None:
-    """Update series.issue_count in Postgres after a full scan."""
+    """Update series.issue_count in Postgres after a full scan, and prune
+    any series/issues that are no longer present in Drive."""
     if not (_HAS_R2_PG and r2_configured() and pg_configured()):
         return
+
+    # ── 1. Update issue counts for all series found this scan ────────────
     for sid, s in series_map.items():
         _pg_upsert_series(  # type: ignore[name-defined]
             series_id=sid,
@@ -552,6 +558,29 @@ def _publish_manifest_r2_pg(series_map: dict) -> None:
             drive_folder_id=s["folderId"],
         )
     print(f"  [pg] series issue_counts updated ✓")
+
+    # ── 2. Prune orphaned issues (in DB from Drive, but no longer in Drive) ─
+    from db_pg import list_drive_issue_ids, delete_issue  # type: ignore
+    from db_pg import list_drive_series_ids, delete_series  # type: ignore
+    from r2 import delete_prefix  # type: ignore
+
+    scan_issue_ids = {
+        issue["id"]
+        for s in series_map.values()
+        for issue in s["issues"]
+    }
+    for issue_id, series_id in list_drive_issue_ids():
+        if issue_id not in scan_issue_ids:
+            r2_count = delete_prefix(f"{series_id}/{issue_id}/")
+            delete_issue(issue_id)
+            print(f"  [prune] removed issue {issue_id} ({r2_count} R2 objects deleted)")
+
+    # ── 3. Prune orphaned series (no issues left) ─────────────────────────
+    scan_series_ids = set(series_map.keys())
+    for series_id in list_drive_series_ids():
+        if series_id not in scan_series_ids:
+            delete_series(series_id)
+            print(f"  [prune] removed series {series_id}")
 
 
 if __name__ == "__main__":

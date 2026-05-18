@@ -63,6 +63,46 @@ def upsert_series(
         conn.close()
 
 
+def list_drive_series_ids() -> list[str]:
+    """Return IDs of all series that were harvested from Drive (drive_folder_id IS NOT NULL)."""
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM series WHERE drive_folder_id IS NOT NULL")
+            return [r[0] for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def list_drive_issue_ids() -> list[str]:
+    """Return IDs of all issues that were harvested from Drive (drive_file_id IS NOT NULL)."""
+    conn = _conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, series_id FROM issues WHERE drive_file_id IS NOT NULL")
+            return [(r[0], r[1]) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def delete_issue(issue_id: str) -> None:
+    conn = _conn()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM issues WHERE id = %s", (issue_id,))
+    finally:
+        conn.close()
+
+
+def delete_series(series_id: str) -> None:
+    conn = _conn()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM series WHERE id = %s", (series_id,))
+    finally:
+        conn.close()
+
+
 def upsert_issue(
     *,
     issue_id: str,
