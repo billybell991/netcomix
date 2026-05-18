@@ -82,6 +82,9 @@ def migrate() -> None:
         sys.exit(f"✗ {library_path} not found — run the harvester first")
     library = json.loads(library_path.read_text(encoding="utf-8"))
 
+    # RULE: public/comics/**/issue.json in git = ground truth for panel data.
+    # Never overwrite with Drive data. migrate.py reads local files only — this is intentional.
+
     # Try connecting to Drive (optional — local files are preferred)
     svc = None
     try:

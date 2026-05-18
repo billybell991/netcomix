@@ -87,14 +87,19 @@ def backfill() -> None:
 
                 print(f"  ↳ {iid}  {'(already in R2)' if already_in_r2 else ''}")
 
-                # Download issue.json from Drive
-                issue_json_local = tdp / f"{iid}-issue.json"
-                try:
-                    download_file(svc, issue_file_id, issue_json_local)
-                    issue_data = json.loads(issue_json_local.read_text(encoding="utf-8"))
-                except Exception as e:
-                    print(f"    ! failed to fetch issue.json: {e}", file=sys.stderr)
-                    continue
+                # Prefer local issue.json (tuned panel data in git) over Drive (stale pre-tuning data).
+                local_issue_json = COMICS_DIR / sid / iid / "issue.json"
+                if local_issue_json.exists():
+                    print(f"    (using LOCAL issue.json — git is ground truth for panels)")
+                    issue_data = json.loads(local_issue_json.read_text(encoding="utf-8"))
+                else:
+                    issue_json_local = tdp / f"{iid}-issue.json"
+                    try:
+                        download_file(svc, issue_file_id, issue_json_local)
+                        issue_data = json.loads(issue_json_local.read_text(encoding="utf-8"))
+                    except Exception as e:
+                        print(f"    ! failed to fetch issue.json: {e}", file=sys.stderr)
+                        continue
 
                 pages = issue_data.get("pages", [])
                 cover_file = issue_data.get("cover", "page-001.jpg")
