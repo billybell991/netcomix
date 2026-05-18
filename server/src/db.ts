@@ -136,6 +136,25 @@ export const db = {
     };
   },
 
+  async getAdminIssues() {
+    const { rows } = await pool.query<{
+      id: string; title: string; series_id: string;
+      series_title: string; page_count: number;
+    }>(
+      `SELECT i.id, i.title, i.series_id, s.title AS series_title, i.page_count
+       FROM issues i
+       JOIN series s ON s.id = i.series_id
+       ORDER BY s.title, i.id`,
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      seriesId: r.series_id,
+      seriesTitle: r.series_title,
+      pageCount: r.page_count,
+    }));
+  },
+
   async bulkMigrate(series: SeriesInput[], issues: IssueInput[]) {
     const client = await pool.connect();
     try {

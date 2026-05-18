@@ -39,8 +39,9 @@ export function Reader({ issue, issuePath, onBack }: Props) {
   });
   const [hudOpen, setHudOpen] = useState(false);
 
-  // ── Pinpoint calibration tool (dev only) ──────────────────────────────
+  // ── Dev tools (pinpoint + panel debug overlay) ─────────────────────────
   const [pinpointMode, setPinpointMode] = useState(false);
+  const [debugOverlay, setDebugOverlay] = useState(false);
   const [pinpoints, setPinpoints] = useState<{ x: number; y: number }[]>([]);
   const [panelPos, setPanelPos] = useState({ x: window.innerWidth - 204, y: 12 });
   const dragRef = useRef<{ startMouseX: number; startMouseY: number; startPanelX: number; startPanelY: number } | null>(null);
@@ -245,13 +246,38 @@ export function Reader({ issue, issuePath, onBack }: Props) {
         </div>
       )}
 
-      {/* Pinpoint toggle button */}
-      <button
-        className="pinpoint-toggle"
-        data-nohud
-        title="Pinpoint calibration tool"
-        onClick={(e) => { e.stopPropagation(); setPinpointMode((v) => !v); if (pinpointMode) setPinpoints([]); }}
-      >📍</button>
+      {/* Panel debug overlay boxes */}
+      {debugOverlay && effectiveTransform && currentPage.panels.map((panel, i) => {
+        const { translateX: tx, translateY: ty, scale: s } = effectiveTransform;
+        return (
+          <div
+            key={i}
+            className={`panel-debug-box${i === position.panelIndex ? " active" : ""}`}
+            style={{
+              left: panel.x * s + tx,
+              top: panel.y * s + ty,
+              width: panel.w * s,
+              height: panel.h * s,
+            }}
+          >
+            <span className="panel-debug-label">{i + 1}</span>
+          </div>
+        );
+      })}
+
+      {/* Dev toolbar — pinpoint + debug overlay (top-right, clear of nav buttons) */}
+      <div className="dev-toolbar" data-nohud>
+        <button
+          className={`dev-btn${debugOverlay ? " active" : ""}`}
+          title="Toggle panel debug overlay"
+          onClick={(e) => { e.stopPropagation(); setDebugOverlay((v) => !v); }}
+        >🔲</button>
+        <button
+          className={`dev-btn${pinpointMode ? " active" : ""}`}
+          title="Pinpoint calibration tool"
+          onClick={(e) => { e.stopPropagation(); setPinpointMode((v) => !v); if (pinpointMode) setPinpoints([]); }}
+        >📍</button>
+      </div>
 
       <div className="page-counter" data-testid="page-counter">
         {position.panelIndex >= 0

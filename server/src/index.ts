@@ -85,6 +85,17 @@ app.get("/api/admin/dbtest", async (c) => {
   }
 });
 
+// ─── Admin: issue list for re-detect helper ───────────────────────────────────
+app.get("/api/admin/issues", async (c) => {
+  try {
+    const issues = await db.getAdminIssues();
+    return c.json(issues);
+  } catch (e) {
+    console.error("GET /api/admin/issues", e);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
 // ─── Admin: bulk migrate ──────────────────────────────────────────────────────
 app.post("/api/admin/migrate", async (c) => {
   try {

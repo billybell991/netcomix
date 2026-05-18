@@ -63,6 +63,18 @@ export async function apiSeries(id: string): Promise<SeriesIndex> {
   };
 }
 
+export interface AdminIssue {
+  id: string;
+  title: string;
+  seriesId: string;
+  seriesTitle: string;
+  pageCount: number;
+}
+
+export async function apiAdminIssues(): Promise<AdminIssue[]> {
+  return apiFetch<AdminIssue[]>("/api/admin/issues");
+}
+
 export async function apiIssue(id: string): Promise<IssueManifest> {
   const data = await apiFetch<ApiIssue>(`/api/issue/${id}`);
   return {

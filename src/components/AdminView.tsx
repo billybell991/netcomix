@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { latestScanRun, triggerScan, type WorkflowRun } from "../github-actions";
-import { isGithubConfigured } from "../config";
+import { isGithubConfigured, isApiConfigured } from "../config";
+import { apiAdminIssues, type AdminIssue } from "../api";
 
 interface Props {
   onBack: () => void;
@@ -35,10 +36,15 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
   const [run, setRun] = useState<WorkflowRun | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dispatching, setDispatching] = useState(false);
-  // track the run id we just triggered so we can highlight it
   const triggeredId = useRef<number | null>(null);
 
+  // Issues list for re-detect helper
+  const [adminIssues, setAdminIssues] = useState<AdminIssue[] | null>(null);
+  const [issuesError, setIssuesError] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
   const ghConfigured = isGithubConfigured();
+  const apiReady = isApiConfigured();
   const isActive = run && (run.status === "queued" || run.status === "in_progress");
   const elapsed = useElapsed(isActive ? run.created_at : null);
 
@@ -60,6 +66,14 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
     }, 5000);
     return () => window.clearInterval(t);
   }, []);
+
+  // Load issues list if API is configured
+  useEffect(() => {
+    if (!apiReady) return;
+    apiAdminIssues()
+      .then(setAdminIssues)
+      .catch((e) => setIssuesError(String(e)));
+  }, [apiReady]);
 
   const onScan = async () => {
     setDispatching(true);
@@ -170,6 +184,52 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
               <a href={run.html_url} target="_blank" rel="noreferrer" style={{ color: "#1f6feb", fontSize: 13 }}>
                 View on GitHub →
               </a>
+            </div>
+          )}
+        </section>
+
+        <section style={{ marginBottom: 24 }}>
+          <h2 style={{ color: "#ddd" }}>Issues — re-detect helper</h2>
+          <p style={{ color: "#aaa", fontSize: 13 }}>
+            To re-detect panels for a single issue, copy its command and run it in your terminal
+            (requires env vars set locally).
+          </p>
+          {!apiReady && <p style={{ color: "#666", fontSize: 13 }}>Configure API URL in Setup to see the issue list.</p>}
+          {issuesError && <p style={{ color: "#e53935", fontSize: 13 }}>{issuesError}</p>}
+          {apiReady && !adminIssues && !issuesError && <p style={{ color: "#666", fontSize: 13 }}>Loading…</p>}
+          {adminIssues && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 360, overflowY: "auto" }}>
+              {adminIssues.map((iss) => (
+                <div key={iss.id} style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  background: "#111", borderRadius: 6, padding: "6px 10px",
+                  border: "1px solid #222",
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: "#ccc", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {iss.seriesTitle} — {iss.title}
+                    </div>
+                    <div style={{ color: "#666", fontSize: 11 }}>{iss.pageCount} pages</div>
+                  </div>
+                  <button
+                    style={{
+                      background: copiedId === iss.id ? "rgba(76,175,80,0.25)" : "rgba(255,255,255,0.08)",
+                      border: `1px solid ${copiedId === iss.id ? "#4caf50" : "rgba(255,255,255,0.18)"}`,
+                      borderRadius: 5, color: copiedId === iss.id ? "#4caf50" : "#aaa",
+                      fontSize: 11, padding: "4px 8px", cursor: "pointer", whiteSpace: "nowrap",
+                      transition: "all 0.2s",
+                    }}
+                    title={`python harvester/redetect_all.py --issue ${iss.id}`}
+                    onClick={() => {
+                      navigator.clipboard.writeText(`python harvester/redetect_all.py --issue ${iss.id}`);
+                      setCopiedId(iss.id);
+                      setTimeout(() => setCopiedId(null), 2000);
+                    }}
+                  >
+                    {copiedId === iss.id ? "✓ Copied" : "⎘ Re-detect"}
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </section>

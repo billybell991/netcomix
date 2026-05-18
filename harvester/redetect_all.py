@@ -23,6 +23,7 @@ Required env vars:
 """
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -153,6 +154,16 @@ def update_local_json(issue_id: str, pages: list, cur) -> bool:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Re-detect panels for all issues (or a specific one)."
+    )
+    parser.add_argument(
+        "--issue",
+        metavar="ISSUE_ID",
+        help="Re-detect only this issue ID (default: all issues)",
+    )
+    args = parser.parse_args()
+
     required = ["DATABASE_URL", "R2_BUCKET", "R2_ENDPOINT_URL",
                 "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"]
     missing = [v for v in required if not os.environ.get(v)]
@@ -165,8 +176,17 @@ def main():
     s3 = _r2_client()
     bucket = os.environ["R2_BUCKET"]
 
-    cur.execute("SELECT id, pages FROM issues ORDER BY series_id, id")
+    if args.issue:
+        cur.execute("SELECT id, pages FROM issues WHERE id = %s", [args.issue])
+    else:
+        cur.execute("SELECT id, pages FROM issues ORDER BY series_id, id")
     issues = cur.fetchall()
+
+    if args.issue and not issues:
+        print(f"Issue '{args.issue}' not found in DB.")
+        cur.close()
+        conn.close()
+        sys.exit(1)
 
     total_issues = len(issues)
     total_pages = 0
