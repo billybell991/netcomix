@@ -76,13 +76,16 @@ function expandWidePanels(manifest: IssueManifest): IssueManifest {
       expanded.push(panel);
 
       if (subCount > 0 || isWide) {
-        // Left half: full page width left side, same row height.
-        // Right half: full page width right side, same row height.
-        // Using page.width so the halves cover the complete scan including
-        // any artwork in the margins outside the detected panel boundary.
+        // Emit a page-width overview then page-width halves.
+        // Using page.width for BOTH the overview and the halves means:
+        //   • The overview box boundary aligns with the halves' outer edges, so
+        //     no spurious outline line from the overview appears inside a half's view.
+        //   • The transition overview → half is a pure zoom-in with no confusing pan.
+        //   • All three snaps cover the complete row including margin artwork.
         expanded.push(
-          { x: 0,     y: panel.y, w: halfW,              h: panel.h, centerX: Math.round(halfW / 2),                     centerY: panel.centerY },
-          { x: halfW, y: panel.y, w: page.width - halfW, h: panel.h, centerX: Math.round(halfW + (page.width - halfW) / 2), centerY: panel.centerY },
+          { x: 0,     y: panel.y, w: page.width,          h: panel.h, centerX: halfW,                                    centerY: panel.centerY },
+          { x: 0,     y: panel.y, w: halfW,                h: panel.h, centerX: Math.round(halfW / 2),                    centerY: panel.centerY },
+          { x: halfW, y: panel.y, w: page.width - halfW,   h: panel.h, centerX: Math.round(halfW + (page.width - halfW) / 2), centerY: panel.centerY },
         );
         i = j - 1; // skip sub-panels — consumed above
       }
