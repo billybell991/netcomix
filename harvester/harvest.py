@@ -209,6 +209,21 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     ink_ratio = 0.20
     bbox_ink_ratio = 0.02
 
+    # Tighter content mask (< 225) used by the yellow-caption gutter fallback.
+    # Yellow narration caption boxes (~218-228 gray) are counted as ink by the
+    # main content mask (< 230) and can block detection of inter-row gutters.
+    # content_225 treats those caption pixels as white, exposing the real gutter.
+    content_225 = (gray < 225).astype(np.uint8)
+
+    # Strips produced by the thin-gap fallback are confirmed single-panel rows;
+    # they must NOT be further split by _split_at_borders (the fallback has
+    # already identified them as correctly bounded panels).
+    thin_gap_confirmed: List[Tuple[int, int]] = []  # (y0_abs, y1_abs)
+    # 225-threshold direct leaf strips: need _split_at_borders with white-gutter
+    # detection only (their left/right gutter is a low-col-ink white gap, not a
+    # high-col-ink dark border like dark-background pages).
+    needs_border_split: List[Tuple[int, int]] = []  # (y0_abs, y1_abs)
+
     def find_gutter_runs(profile: np.ndarray, threshold: float, min_run: int) -> List[Tuple[int, int]]:
         """Return list of (start, end_exclusive) index ranges where profile < threshold
         for at least `min_run` consecutive samples."""
@@ -272,6 +287,58 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                         strips2.append((prev2, rh))
                     if len(strips2) > len(strips):
                         strips = strips2
+                # Yellow-caption fallback (depth ≤ 1): recompute row_ink with the
+                # tighter 225 threshold.  Yellow narration boxes (~218-228 gray) that
+                # sit at the border between two rows block gutter detection when the
+                # standard mask (< 230) counts them as ink. content_225 treats those
+                # caption pixels as white, revealing the true inter-row gap.
+                # Strips from this fallback are returned as direct leaf rects (no
+                # recursive vertical re-split) so that Pass 1.5 (_split_at_borders)
+                # handles any left/right sub-panel detection in one controlled pass.
+                _use_direct_leaf = False
+                if len(strips) < 2 and depth <= 1:
+                    row_ink_225 = content_225[y0:y1, x0:x1].sum(axis=1) / rw
+                    runs3 = find_gutter_runs(row_ink_225, ink_ratio, min_gutter_v)
+                    strips3: List[Tuple[int, int]] = []
+                    prev3 = 0
+                    for s, e in runs3:
+                        if s - prev3 >= min_panel_h:
+                            strips3.append((prev3, s))
+                        prev3 = e
+                    if rh - prev3 >= min_panel_h:
+                        strips3.append((prev3, rh))
+                    if len(strips3) > len(strips):
+                        strips = strips3
+                        _use_direct_leaf = True
+                        for _s3, _e3 in strips3:
+                            needs_border_split.append((y0 + _s3, y0 + _e3))
+                # Thin-gap fallback (depth ≤ 1): detect single-row white gaps
+                # between high-ink regions.  Some comics (e.g. Papercutz TFTC)
+                # reduce the whitespace between rows to just 1 pure-white pixel
+                # because narration caption boxes extend to the panel edge.
+                # Strips from this fallback are BOTH returned as direct leaf rects
+                # AND registered in thin_gap_confirmed so Pass 1.5 skips them.
+                if len(strips) < 2 and depth <= 1:
+                    for i in range(min_gutter_v, rh - min_gutter_v):
+                        if row_ink[i] < 0.03:
+                            left_avg = float(row_ink[max(0, i - min_gutter_v * 2):max(0, i - 2)].mean())
+                            right_avg = float(row_ink[min(rh, i + 2):min(rh, i + min_gutter_v * 2)].mean())
+                            if left_avg > 0.50 and right_avg > 0.50:
+                                gs = max(0, i - min_gutter_v // 2)
+                                ge = min(rh, i + min_gutter_v // 2 + 1)
+                                gap_strips: List[Tuple[int, int]] = []
+                                prevg = 0
+                                if gs - prevg >= min_panel_h:
+                                    gap_strips.append((prevg, gs))
+                                prevg = ge
+                                if rh - prevg >= min_panel_h:
+                                    gap_strips.append((prevg, rh))
+                                if len(gap_strips) >= 2:
+                                    strips = gap_strips
+                                    _use_direct_leaf = True
+                                    for _s, _e in gap_strips:
+                                        thin_gap_confirmed.append((y0 + _s, y0 + _e))
+                                break
                 if len(strips) >= 2:
                     out: List[Tuple[int, int, int, int]] = []
                     for s, e in strips:
@@ -283,7 +350,14 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                             continue
                         cx0 = int(nonempty[0])
                         cx1 = int(nonempty[-1] + 1)
-                        out.extend(split(x0 + cx0, y0 + s, x0 + cx1, y0 + e, "v", depth + 1))
+                        if _use_direct_leaf:
+                            # Return as leaf without further recursive splitting.
+                            # For thin-gap strips: they are single-scene panels.
+                            # For 225-threshold strips: Pass 1.5 (_split_at_borders)
+                            # handles any left/right sub-panel structure in one pass.
+                            out.append((x0 + cx0, y0 + s, x0 + cx1, y0 + e))
+                        else:
+                            out.extend(split(x0 + cx0, y0 + s, x0 + cx1, y0 + e, "v", depth + 1))
                     if out:
                         return out
             else:
@@ -380,7 +454,7 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     # height/width of the detected panel — those are the shared border lines.
     # Guard: only try if the top and bottom rows of the panel are themselves
     # high-ink (≥80%), confirming the panel has a rectangular border frame.
-    def _split_at_borders(px0: int, py0: int, px1: int, py1: int) -> List[Tuple[int, int, int, int]]:
+    def _split_at_borders(px0: int, py0: int, px1: int, py1: int, only_white_gutter: bool = False) -> List[Tuple[int, int, int, int]]:
         region = content[py0:py1, px0:px1].astype(np.float32)
         rh, rw = region.shape
         border_thr = 0.95  # column/row must be ≥95% dark to count as a border line
@@ -403,8 +477,23 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                 divs.append((start, length))
             return divs
 
-        # Vertical split (panels side by side with shared vertical border)
         col_ink = region.sum(axis=0) / max(rh, 1)
+
+        # White-gutter mode: for 225-threshold direct leaves whose left/right
+        # sub-panels are separated by a low-col-ink white gap (not a dark border).
+        # Only look for columns with ink below ink_ratio (the same threshold used
+        # by split() for column gutter detection).  Skip dark-border detection.
+        if only_white_gutter:
+            col_edge = max(int(rw * 0.05), 8)
+            white_runs = find_gutter_runs(col_ink, ink_ratio, min_gutter_h)
+            white_interior = [(s, e) for (s, e) in white_runs
+                              if s > col_edge and e < rw - col_edge]
+            if white_interior:
+                xs = [px0] + [px0 + (s + e) // 2 for s, e in white_interior] + [px1]
+                return [(xs[i], py0, xs[i + 1], py1) for i in range(len(xs) - 1)]
+            return [(px0, py0, px1, py1)]
+
+        # Vertical split (panels side by side with shared vertical border)
         divs_v = _interior_dividers(col_ink, rw)
         if divs_v:
             xs = [px0] + [px0 + (s + e) // 2 for s, e in divs_v] + [px1]
@@ -421,6 +510,28 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
 
     panels_split: List[Panel] = []
     for p in panels:
+        # Thin-gap confirmed strips are already correctly identified as single-scene
+        # horizontal panels — skip _split_at_borders to prevent false vertical splits.
+        if any(abs(p.y - _sy0) < 5 and abs(p.y + p.h - _sy1) < 5
+               for (_sy0, _sy1) in thin_gap_confirmed):
+            panels_split.append(p)
+            continue
+        # 225-threshold direct leaves: their sub-panel gutter is white (low col-ink),
+        # not a dark border.  Use white-gutter-only mode regardless of top_ink.
+        if any(abs(p.y - _sy0) < 5 and abs(p.y + p.h - _sy1) < 5
+               for (_sy0, _sy1) in needs_border_split):
+            sub_rects = _split_at_borders(p.x, p.y, p.x + p.w, p.y + p.h, only_white_gutter=True)
+            if len(sub_rects) > 1:
+                added = 0
+                for (sx0, sy0, sx1, sy1) in sub_rects:
+                    cw, ch = sx1 - sx0, sy1 - sy0
+                    if cw >= min_panel_w and ch >= min_panel_h:
+                        panels_split.append(Panel(sx0, sy0, cw, ch, sx0 + cw // 2, sy0 + ch // 2))
+                        added += 1
+                if added > 0:
+                    continue
+            panels_split.append(p)
+            continue
         # Only attempt if the panel is wide enough to plausibly contain 2+ side-by-side
         # bordered panels, AND has thick border rows at top and bottom (≥80% ink).
         is_wide = p.w > w * 0.40
@@ -430,11 +541,14 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
             if top_ink > 0.85:
                 sub_rects = _split_at_borders(p.x, p.y, p.x + p.w, p.y + p.h)
                 if len(sub_rects) > 1:
+                    added = 0
                     for (sx0, sy0, sx1, sy1) in sub_rects:
                         cw, ch = sx1 - sx0, sy1 - sy0
                         if cw >= min_panel_w and ch >= min_panel_h:
                             panels_split.append(Panel(sx0, sy0, cw, ch, sx0 + cw // 2, sy0 + ch // 2))
-                    continue  # replaced by sub-panels
+                            added += 1
+                    if added > 0:
+                        continue  # replaced by valid sub-panels
         panels_split.append(p)
     panels = panels_split
 
@@ -462,6 +576,71 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                     break
         panels = [p for k, p in zip(keep, panels) if k]
 
+    # ── Pass 1.8: complementary left-panel detection ──────────────────────
+    # In dark-background comics, _split_at_borders may fragment a left panel
+    # into many tiny slivers (all < min_panel_w) when the right panel area
+    # has uniformly high col_ink (thick dark border + dark art).  The result
+    # is that only the right sub-panel survives for that row.  Detect this
+    # case and synthesize the missing left panel from the uncovered region.
+    #
+    # Trigger: a row bucket has panels that all start at x > 35% of page
+    # width (right-biased), meaning the left side of the row is uncovered.
+    if panels:
+        _bucket_p18 = max(int(h * 0.08), 20)
+        row_groups_p18: dict = {}
+        for p in panels:
+            b = p.y // _bucket_p18
+            row_groups_p18.setdefault(b, []).append(p)
+        extra: List[Panel] = []
+        page_w_ink = x1 - x0
+        for _b, grp in row_groups_p18.items():
+            leftmost_x = min(p.x for p in grp)
+            # Right-biased: all panels start past 35% of the inked page width
+            if leftmost_x <= x0 + page_w_ink * 0.35:
+                continue
+            row_y0 = min(p.y for p in grp)
+            row_y1 = max(p.y + p.h for p in grp)
+            row_h = row_y1 - row_y0
+            compl_x0, compl_x1 = x0, leftmost_x
+            compl_w = compl_x1 - compl_x0
+            if compl_w < min_panel_w or row_h < min_panel_h:
+                continue
+            # Guard 1: the complement must cover a substantial fraction of the page
+            # width (≥ 45%).  Sub-panels of a falsely split row often produce a
+            # right-biased remainder that is narrower than 45% of the page.
+            if compl_w < page_w_ink * 0.45:
+                continue
+            # Guard 2: the complement region must NOT be substantially covered by
+            # an existing panel (e.g. a tall left-column panel that spans this y range).
+            # If ≥ 50% of the complement area already belongs to a sibling panel,
+            # skip — we'd be adding a duplicate (or the false sub-panel is inside
+            # an already-detected real panel).
+            compl_area = compl_w * row_h
+            already_covered = False
+            for other in panels:
+                if other.x == leftmost_x and other.y == row_y0:
+                    continue  # same panel
+                ox0, oy0 = other.x, other.y
+                ox1, oy1 = other.x + other.w, other.y + other.h
+                ix0 = max(compl_x0, ox0); ix1 = min(compl_x1, ox1)
+                iy0 = max(row_y0, oy0);   iy1 = min(row_y1, oy1)
+                isect = max(0, ix1 - ix0) * max(0, iy1 - iy0)
+                if isect / compl_area >= 0.50:
+                    already_covered = True
+                    break
+            if already_covered:
+                continue
+            # Guard 3: the complementary region must contain real panel content
+            # (not just blank margin) — at least 10% dark ink pixels.
+            sg = gray[row_y0:row_y1, compl_x0:compl_x1]
+            if float((sg < 80).mean()) < 0.10:
+                continue
+            extra.append(Panel(compl_x0, row_y0, compl_w, row_h,
+                               compl_x0 + compl_w // 2, row_y0 + row_h // 2))
+        if extra:
+            panels.extend(extra)
+            panels.sort(key=lambda p: (p.y // _bucket_p18, p.x))
+
     # ── Pass 2: catalog / gallery / splash heuristics ────────────────────
     # Western comics: 3-6 panels is typical, 12 is a practical ceiling
     # (dense pages can have 8-10 panels; 9 was too aggressive).
@@ -476,7 +655,10 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
         # regular.  CV = σ/μ — low CV means all panels are the same size.
         cv = float(areas.std() / areas.mean()) if areas.mean() > 0 else 0.0
         uniform_threshold = 0.15
-        if cv < uniform_threshold:
+        # Only apply uniformity check for 4+ panels: 2-3 same-width horizontal
+        # row strips always have similar areas (same width dominates) and are
+        # valid comic layouts, not catalog grids.
+        if len(panels) >= 4 and cv < uniform_threshold:
             panels = []  # looks like a thumbnail grid / catalog page
 
         # Geometric grid check: if panel centres snap to a rows×cols grid,
@@ -604,6 +786,43 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     # page is better than zooming into that 1 tiny panel.
     if len(panels) == 1 and (panels[0].w * panels[0].h) / page_area < 0.15:
         panels = []
+
+    # ── Post-process: insert row-overview panels before each multi-panel row ─
+    # For horizontal rows containing 2+ sub-panels, prepend a "row overview"
+    # panel covering the entire row's bounding box.  This gives readers context
+    # (the full strip) before zooming into each individual panel — the same
+    # reading rhythm used in most comic reader apps.
+    if len(panels) >= 2:
+        row_groups: List[List[Panel]] = []
+        cur_group: List[Panel] = [panels[0]]
+        for p in panels[1:]:
+            if p.y // bucket == cur_group[0].y // bucket:
+                cur_group.append(p)
+            else:
+                row_groups.append(cur_group)
+                cur_group = [p]
+        row_groups.append(cur_group)
+
+        panels_with_overviews: List[Panel] = []
+        for grp in row_groups:
+            if len(grp) >= 2:
+                rx0 = min(p.x for p in grp)
+                ry0 = min(p.y for p in grp)
+                rx1 = max(p.x + p.w for p in grp)
+                ry1 = max(p.y + p.h for p in grp)
+                rov_w, rov_h = rx1 - rx0, ry1 - ry0
+                max_sub_w = max(p.w for p in grp)
+                # Only add the overview when the combined row is meaningfully
+                # wider than any single sub-panel (confirms it's a real
+                # multi-panel row, not a duplicate detection), and it doesn't
+                # swallow almost the whole page (which would be a splash).
+                if rov_w > max_sub_w * 1.1 and (rov_w * rov_h) / page_area < 0.80:
+                    panels_with_overviews.append(
+                        Panel(rx0, ry0, rov_w, rov_h,
+                              rx0 + rov_w // 2, ry0 + rov_h // 2)
+                    )
+            panels_with_overviews.extend(grp)
+        panels = panels_with_overviews
 
     # Dominant color (mean of a downsampled copy — cheap and good enough for
     # the reader's letterbox background tint).
