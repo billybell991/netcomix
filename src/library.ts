@@ -53,36 +53,47 @@ function expandWidePanels(manifest: IssueManifest): IssueManifest {
     const expanded: Panel[] = [];
     for (let i = 0; i < page.panels.length; i++) {
       const panel = page.panels[i];
-      expanded.push(panel);
 
       // Count stored sub-panels that share the same y (row-overview pattern).
       let subCount = 0;
       while (i + 1 + subCount < page.panels.length && page.panels[i + 1 + subCount].y === panel.y) {
         subCount++;
       }
+
       const isWide = panel.w / page.width >= WIDE_PANEL_RATIO;
 
-      // Decide whether to replace this panel's sub-panels with 50/50 halves.
+      // Detect false splits: a gap between consecutive sub-panels means
+      // _split_at_borders mis-fired on dark artwork.
+      const subPanels = subCount > 0 ? page.panels.slice(i + 1, i + 1 + subCount) : [];
+      const hasGaps = subPanels.some(
+        (sp, k) => k > 0 && sp.x - (subPanels[k - 1].x + subPanels[k - 1].w) > SUB_GAP_THRESHOLD,
+      );
+
+      // A panel is the "first of its y-group" only when the previous panel had a
+      // different y — making it a true row-overview, not a sub-panel sibling.
+      const isFirstInYGroup = i === 0 || page.panels[i - 1].y !== panel.y;
+
+      // Non-wide row-overviews force a jarring zoom-out when snapped to because
+      // the panel is far narrower than the full page. Skip their overview snap and
+      // navigate directly to the sub-panels (or virtual halves) instead.
+      const skipOverview = isFirstInYGroup && subCount > 0 && !isWide;
+
+      // Decide whether to replace sub-panels with 50/50 virtual halves.
       let useVirtualHalves = false;
       if (subCount === 0) {
-        // Standalone panel: wide panels still get halves.
-        useVirtualHalves = isWide;
+        useVirtualHalves = isWide; // standalone wide panel
       } else {
-        const subPanels = page.panels.slice(i + 1, i + 1 + subCount);
-        // Detect false splits: a gap between consecutive sub-panels means
-        // _split_at_borders mis-fired on dark artwork.
-        const hasGaps = subPanels.some(
-          (sp, k) => k > 0 && sp.x - (subPanels[k - 1].x + subPanels[k - 1].w) > SUB_GAP_THRESHOLD,
-        );
         if (hasGaps) {
-          useVirtualHalves = true; // false split detected — ignore sub-panels
+          useVirtualHalves = true; // false split detected — ignore stored sub-panels
         } else if (isWide && subCount < 3) {
           useVirtualHalves = true; // wide row-overview with few correct sub-panels
         }
-        // else: correctly-detected sub-panels (non-wide or 3+ panels, no gaps) — emit naturally
+        // else: correctly-detected sub-panels (3+ or non-wide, no gaps) — emit naturally
       }
 
-      if (!useVirtualHalves) continue;
+      if (!skipOverview) expanded.push(panel);
+
+      if (!useVirtualHalves) continue; // sub-panels emitted naturally in next iterations
 
       // Use clean 50/50 virtual halves of the overview instead of the stored
       // sub-panels (which may be skewed, narrow, or have gaps).
