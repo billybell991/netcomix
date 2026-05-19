@@ -54,11 +54,19 @@ function expandWidePanels(manifest: IssueManifest): IssueManifest {
       const panel = page.panels[i];
       expanded.push(panel);
       if (panel.w / page.width >= WIDE_PANEL_RATIO) {
-        // If the next panel starts at the same y, this is a row-overview panel whose
-        // sub-panels are already stored explicitly — skip virtual half-snaps to avoid
-        // showing the same left/right region twice.
-        const next = page.panels[i + 1];
-        if (next && next.y === panel.y) continue;
+        // Count stored sub-panels that share the same y (row-overview pattern).
+        let subCount = 0;
+        while (i + 1 + subCount < page.panels.length && page.panels[i + 1 + subCount].y === panel.y) {
+          subCount++;
+        }
+        if (subCount >= 3) {
+          // 3+ stored sub-panels = genuine multi-column row — emit them as-is.
+          // (They'll be added by subsequent loop iterations naturally.)
+          continue;
+        }
+        // 0 sub-panels (standalone wide) or 1–2 sub-panels (row-overview):
+        // always use clean 50/50 virtual halves of the overview for consistent UX.
+        // Stored sub-panels may be skewed or have gaps due to dark-art false borders.
         const halfW = Math.round(panel.w / 2);
         expanded.push(
           {
@@ -78,6 +86,8 @@ function expandWidePanels(manifest: IssueManifest): IssueManifest {
             centerY: panel.centerY,
           },
         );
+        // Skip the stored sub-panels — virtual halves replace them.
+        i += subCount;
       }
     }
     return { ...page, panels: expanded };
