@@ -60,24 +60,29 @@ function expandWidePanels(manifest: IssueManifest): IssueManifest {
       while (i + 1 + subCount < page.panels.length && page.panels[i + 1 + subCount].y === panel.y) {
         subCount++;
       }
-      if (subCount === 0) continue; // standalone panel — nothing to do
-
       const isWide = panel.w / page.width >= WIDE_PANEL_RATIO;
-      const subPanels = page.panels.slice(i + 1, i + 1 + subCount);
-      // Detect false splits: a gap between consecutive sub-panels means
-      // _split_at_borders mis-fired on dark artwork.
-      const hasGaps = subPanels.some(
-        (sp, k) => k > 0 && sp.x - (subPanels[k - 1].x + subPanels[k - 1].w) > SUB_GAP_THRESHOLD,
-      );
 
-      if (!isWide && !hasGaps) {
-        // Correctly-detected sub-panels on a non-wide row — emit naturally.
-        continue;
+      // Decide whether to replace this panel's sub-panels with 50/50 halves.
+      let useVirtualHalves = false;
+      if (subCount === 0) {
+        // Standalone panel: wide panels still get halves.
+        useVirtualHalves = isWide;
+      } else {
+        const subPanels = page.panels.slice(i + 1, i + 1 + subCount);
+        // Detect false splits: a gap between consecutive sub-panels means
+        // _split_at_borders mis-fired on dark artwork.
+        const hasGaps = subPanels.some(
+          (sp, k) => k > 0 && sp.x - (subPanels[k - 1].x + subPanels[k - 1].w) > SUB_GAP_THRESHOLD,
+        );
+        if (hasGaps) {
+          useVirtualHalves = true; // false split detected — ignore sub-panels
+        } else if (isWide && subCount < 3) {
+          useVirtualHalves = true; // wide row-overview with few correct sub-panels
+        }
+        // else: correctly-detected sub-panels (non-wide or 3+ panels, no gaps) — emit naturally
       }
-      if (subCount >= 3 && !hasGaps) {
-        // Wide panel with 3+ correctly-spaced sub-panels — emit naturally.
-        continue;
-      }
+
+      if (!useVirtualHalves) continue;
 
       // Use clean 50/50 virtual halves of the overview instead of the stored
       // sub-panels (which may be skewed, narrow, or have gaps).
