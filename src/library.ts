@@ -40,12 +40,12 @@ export async function fetchSeries(seriesPath: string, _series?: SeriesEntry): Pr
 
 /**
  * For wide panels (≥85% page width) or any row-overview whose sub-panels have
- * suspicious gaps (>30 px, indicating a _split_at_borders false split on dark
- * artwork), insert two virtual 50/50 sub-snaps after the overview snap.
- * No DB changes required — expansion is applied at read-time.
+ * For each row of panels (grouped by y-coordinate), emit three navigation
+ * snaps: the row overview (full row width), then a virtual left half, then
+ * a virtual right half. Standalone narrow panels are emitted as a single snap.
+ * This gives a consistent overview → left → right rhythm on every page.
  */
 const WIDE_PANEL_RATIO = 0.85;
-const SUB_GAP_THRESHOLD = 30; // px gap between adjacent sub-panels = false split
 
 function expandWidePanels(manifest: IssueManifest): IssueManifest {
   const pages = manifest.pages.map((page) => {
@@ -62,64 +62,34 @@ function expandWidePanels(manifest: IssueManifest): IssueManifest {
 
       const isWide = panel.w / page.width >= WIDE_PANEL_RATIO;
 
-      // Detect false splits: a gap between consecutive sub-panels means
-      // _split_at_borders mis-fired on dark artwork.
-      const subPanels = subCount > 0 ? page.panels.slice(i + 1, i + 1 + subCount) : [];
-      const hasGaps = subPanels.some(
-        (sp, k) => k > 0 && sp.x - (subPanels[k - 1].x + subPanels[k - 1].w) > SUB_GAP_THRESHOLD,
-      );
+      // Always emit the overview snap so the reader sees the full row first.
+      expanded.push(panel);
 
-      // A panel is the "first of its y-group" only when the previous panel had a
-      // different y — making it a true row-overview, not a sub-panel sibling.
-      const isFirstInYGroup = i === 0 || page.panels[i - 1].y !== panel.y;
-
-      // Skip the overview snap for any row-overview or standalone wide panel.
-      // At ~0.35x zoom, a full-width panel is nearly identical to the page
-      // thumbnail — emitting it as a snap wastes a click and creates a jarring
-      // zoom-out valley between the adjacent half/sub-panel snaps.
-      // Navigate directly to sub-panels or virtual halves instead.
-      const skipOverview = isFirstInYGroup && (subCount > 0 || isWide);
-
-      // Decide whether to replace sub-panels with 50/50 virtual halves.
-      let useVirtualHalves = false;
-      if (subCount === 0) {
-        useVirtualHalves = isWide; // standalone wide panel
-      } else {
-        if (hasGaps) {
-          useVirtualHalves = true; // false split detected — ignore stored sub-panels
-        } else if (isWide && subCount < 3) {
-          useVirtualHalves = true; // wide row-overview with few correct sub-panels
-        }
-        // else: correctly-detected sub-panels (3+ or non-wide, no gaps) — emit naturally
+      // For any multi-panel row (has sub-panels) or standalone wide panel,
+      // emit left/right virtual halves. We use virtual halves — not the
+      // detected sub-panels — so every row navigates overview → left → right.
+      if (subCount > 0 || isWide) {
+        const halfW = Math.round(panel.w / 2);
+        expanded.push(
+          {
+            x: panel.x,
+            y: panel.y,
+            w: halfW,
+            h: panel.h,
+            centerX: Math.round(panel.x + halfW / 2),
+            centerY: panel.centerY,
+          },
+          {
+            x: panel.x + halfW,
+            y: panel.y,
+            w: halfW,
+            h: panel.h,
+            centerX: Math.round(panel.x + halfW + halfW / 2),
+            centerY: panel.centerY,
+          },
+        );
+        i += subCount; // skip stored sub-panels — virtual halves replace them
       }
-
-      if (!skipOverview) expanded.push(panel);
-
-      if (!useVirtualHalves) continue; // sub-panels emitted naturally in next iterations
-
-      // Use clean 50/50 virtual halves of the overview instead of the stored
-      // sub-panels (which may be skewed, narrow, or have gaps).
-      const halfW = Math.round(panel.w / 2);
-      expanded.push(
-        {
-          x: panel.x,
-          y: panel.y,
-          w: halfW,
-          h: panel.h,
-          centerX: Math.round(panel.x + halfW / 2),
-          centerY: panel.centerY,
-        },
-        {
-          x: panel.x + halfW,
-          y: panel.y,
-          w: halfW,
-          h: panel.h,
-          centerX: Math.round(panel.x + halfW + halfW / 2),
-          centerY: panel.centerY,
-        },
-      );
-      // Skip the stored sub-panels — virtual halves replace them.
-      i += subCount;
     }
     return { ...page, panels: expanded };
   });
