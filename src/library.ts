@@ -73,10 +73,12 @@ function expandWidePanels(manifest: IssueManifest): IssueManifest {
       // different y — making it a true row-overview, not a sub-panel sibling.
       const isFirstInYGroup = i === 0 || page.panels[i - 1].y !== panel.y;
 
-      // Non-wide row-overviews force a jarring zoom-out when snapped to because
-      // the panel is far narrower than the full page. Skip their overview snap and
-      // navigate directly to the sub-panels (or virtual halves) instead.
-      const skipOverview = isFirstInYGroup && subCount > 0 && !isWide;
+      // Skip the overview snap for any row-overview or standalone wide panel.
+      // At ~0.35x zoom, a full-width panel is nearly identical to the page
+      // thumbnail — emitting it as a snap wastes a click and creates a jarring
+      // zoom-out valley between the adjacent half/sub-panel snaps.
+      // Navigate directly to sub-panels or virtual halves instead.
+      const skipOverview = isFirstInYGroup && (subCount > 0 || isWide);
 
       // Decide whether to replace sub-panels with 50/50 virtual halves.
       let useVirtualHalves = false;
