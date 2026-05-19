@@ -35,8 +35,6 @@ function statusLabel(run: WorkflowRun | null): string {
 export function AdminView({ onBack, onOpenSetup }: Props) {
   const [run, setRun] = useState<WorkflowRun | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [dispatching, setDispatching] = useState(false);
-  const triggeredId = useRef<number | null>(null);
 
   // Issues list + re-detect
   const [adminIssues, setAdminIssues] = useState<AdminIssue[] | null>(null);
@@ -153,28 +151,6 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
     }
   };
 
-  const onScan = async () => {
-    setDispatching(true);
-    setError(null);
-    try {
-      await triggerScan();
-      // Poll quickly for a few seconds so the new run appears promptly
-      let attempts = 0;
-      const poll = window.setInterval(async () => {
-        attempts++;
-        const r = await latestScanRun().catch(() => null);
-        if (r) {
-          setRun(r);
-          triggeredId.current = r.id;
-        }
-        if (attempts >= 6) window.clearInterval(poll);
-      }, 1500);
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setDispatching(false);
-    }
-  };
 
   const statusColor =
     run?.conclusion === "success" ? "#4caf50"
@@ -182,8 +158,6 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
     : run?.status === "in_progress" ? "#ffb300"
     : run?.status === "queued" ? "#64b5f6"
     : "#888";
-
-  const buttonBusy = !ghConfigured || dispatching || (run?.status === "queued") || (run?.status === "in_progress");
 
   return (
     <div className="shell" data-testid="admin-view">

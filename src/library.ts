@@ -50,9 +50,15 @@ function expandWidePanels(manifest: IssueManifest): IssueManifest {
   const pages = manifest.pages.map((page) => {
     if (!page.width || page.panels.length === 0) return page;
     const expanded: Panel[] = [];
-    for (const panel of page.panels) {
+    for (let i = 0; i < page.panels.length; i++) {
+      const panel = page.panels[i];
       expanded.push(panel);
       if (panel.w / page.width >= WIDE_PANEL_RATIO) {
+        // If the next panel starts at the same y, this is a row-overview panel whose
+        // sub-panels are already stored explicitly — skip virtual half-snaps to avoid
+        // showing the same left/right region twice.
+        const next = page.panels[i + 1];
+        if (next && next.y === panel.y) continue;
         const halfW = Math.round(panel.w / 2);
         expanded.push(
           {
