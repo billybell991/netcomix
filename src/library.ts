@@ -41,86 +41,52 @@ export async function fetchSeries(seriesPath: string, _series?: SeriesEntry): Pr
 /**
  * Post-process panel data from the DB to produce navigation snaps.
  *
- * For each row (overview panel + detected sub-panels sharing the same y):
- *   1. Emit the row overview (full row width) as the first snap.
- *   2. Group sub-panels into a LEFT group (center-x ≤ overview midpoint) and
- *      a RIGHT group (center-x > overview midpoint).
- *   3. Emit a bounding-box panel for the left group and one for the right group.
- *      Using actual sub-panel bounds (not a blind 50/50 split) ensures the
- *      artwork boundaries are respected and no panel content is cut off.
+ * For each row-overview panel (and any standalone wide panel):
+ *   1. Emit the row overview as the first snap.
+ *   2. Emit a LEFT half spanning x=0 … page.width/2 for the full row height.
+ *   3. Emit a RIGHT half spanning x=page.width/2 … page.width for the full row height.
  *
- * For standalone wide panels (≥85% page width, no sub-panels):
- *   Emit virtual 50/50 halves so every wide row still gets overview → L → R.
+ * Splitting on page.width (not on the detected panel bounds) ensures the reader
+ * always sees the complete left or right half of the page — including artwork
+ * in the gutters/margins that sits outside the harvester's detected panel box.
+ * It also makes the halves immune to speech-balloon detection noise.
  *
  * Standalone narrow panels with no sub-panels get a single snap only.
  */
 const WIDE_PANEL_RATIO = 0.85;
 
-/** Compute the bounding box of a set of panels. */
-function panelBBox(panels: Panel[]): Panel {
-  const x = Math.min(...panels.map((p) => p.x));
-  const right = Math.max(...panels.map((p) => p.x + p.w));
-  const y = Math.min(...panels.map((p) => p.y));
-  const bottom = Math.max(...panels.map((p) => p.y + p.h));
-  return {
-    x,
-    y,
-    w: right - x,
-    h: bottom - y,
-    centerX: Math.round((x + right) / 2),
-    centerY: Math.round((y + bottom) / 2),
-  };
-}
-
 function expandWidePanels(manifest: IssueManifest): IssueManifest {
   const pages = manifest.pages.map((page) => {
     if (!page.width || page.panels.length === 0) return page;
     const expanded: Panel[] = [];
+    const halfW = Math.round(page.width / 2);
     for (let i = 0; i < page.panels.length; i++) {
       const panel = page.panels[i];
 
-      // Collect sub-panels that share the same y (row siblings of this overview).
-      const subs: Panel[] = [];
+      // Skip over any sub-panels that share the same y — we don't navigate
+      // to them individually; we use page-width halves instead.
       let j = i + 1;
       while (j < page.panels.length && page.panels[j].y === panel.y) {
-        subs.push(page.panels[j]);
         j++;
       }
-      const subCount = subs.length;
-
+      const subCount = j - i - 1;
       const isWide = panel.w / page.width >= WIDE_PANEL_RATIO;
 
       // Always emit the row overview first.
       expanded.push(panel);
 
-      if (subCount > 0) {
-        // Group actual sub-panels into left and right halves using the overview
-        // midpoint as the dividing line.  This respects the actual artwork
-        // boundaries instead of a blind 50/50 split.
-        const mid = panel.x + panel.w / 2;
-        const leftSubs = subs.filter((s) => s.x + s.w / 2 <= mid);
-        const rightSubs = subs.filter((s) => s.x + s.w / 2 > mid);
-
-        if (leftSubs.length > 0 && rightSubs.length > 0) {
-          expanded.push(panelBBox(leftSubs), panelBBox(rightSubs));
-        } else {
-          // Degenerate: all subs on one side — fall back to virtual halves.
-          const halfW = Math.round(panel.w / 2);
-          expanded.push(
-            { x: panel.x, y: panel.y, w: halfW, h: panel.h, centerX: Math.round(panel.x + halfW / 2), centerY: panel.centerY },
-            { x: panel.x + halfW, y: panel.y, w: halfW, h: panel.h, centerX: Math.round(panel.x + halfW + halfW / 2), centerY: panel.centerY },
-          );
-        }
-        i = j - 1; // skip sub-panels — we've already consumed them above
-      } else if (isWide) {
-        // Standalone wide panel — no sub-panels detected, use virtual 50/50 halves.
-        const halfW = Math.round(panel.w / 2);
+      if (subCount > 0 || isWide) {
+        // Left half: full page width left side, same row height.
+        // Right half: full page width right side, same row height.
+        // Using page.width so the halves cover the complete scan including
+        // any artwork in the margins outside the detected panel boundary.
         expanded.push(
-          { x: panel.x, y: panel.y, w: halfW, h: panel.h, centerX: Math.round(panel.x + halfW / 2), centerY: panel.centerY },
-          { x: panel.x + halfW, y: panel.y, w: halfW, h: panel.h, centerX: Math.round(panel.x + halfW + halfW / 2), centerY: panel.centerY },
+          { x: 0,     y: panel.y, w: halfW,              h: panel.h, centerX: Math.round(halfW / 2),                     centerY: panel.centerY },
+          { x: halfW, y: panel.y, w: page.width - halfW, h: panel.h, centerX: Math.round(halfW + (page.width - halfW) / 2), centerY: panel.centerY },
         );
+        i = j - 1; // skip sub-panels — consumed above
       }
-      // else: standalone narrow panel — single snap, no split
+      // else: standalone narrow panel — single snap only
     }
     return { ...page, panels: expanded };
   });
