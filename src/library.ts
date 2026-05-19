@@ -42,9 +42,8 @@ export async function fetchSeries(seriesPath: string, _series?: SeriesEntry): Pr
  * Post-process panel data from the DB to produce navigation snaps.
  *
  * For each row-overview panel (and any standalone wide panel):
- *   1. Emit the row overview as the first snap.
- *   2. Emit a LEFT half spanning x=0 … page.width/2 for the full row height.
- *   3. Emit a RIGHT half spanning x=page.width/2 … page.width for the full row height.
+ *   1. Emit a LEFT half spanning x=0 … page.width/2 for the full row height.
+ *   2. Emit a RIGHT half spanning x=page.width/2 … page.width for the full row height.
  *
  * Splitting on page.width (not on the detected panel bounds) ensures the reader
  * always sees the complete left or right half of the page — including artwork
@@ -54,8 +53,10 @@ export async function fetchSeries(seriesPath: string, _series?: SeriesEntry): Pr
  * Standalone narrow panels with no sub-panels get a single snap only.
  */
 const WIDE_PANEL_RATIO = 0.85;
+/** Max pixel difference in y to still consider panels part of the same row. */
+const PANEL_Y_TOLERANCE = 5;
 
-function expandWidePanels(manifest: IssueManifest): IssueManifest {
+export function expandWidePanels(manifest: IssueManifest): IssueManifest {
   const pages = manifest.pages.map((page) => {
     if (!page.width || page.panels.length === 0) return page;
     const expanded: Panel[] = [];
@@ -63,33 +64,31 @@ function expandWidePanels(manifest: IssueManifest): IssueManifest {
     for (let i = 0; i < page.panels.length; i++) {
       const panel = page.panels[i];
 
-      // Skip over any sub-panels that share the same y — we don't navigate
+      // Skip over any sub-panels that share the same row — we don't navigate
       // to them individually; we use page-width halves instead.
+      // Allow a small y-tolerance so harvester jitter (e.g. y=25 vs y=27)
+      // doesn't split the same visual row into two separate groups.
       let j = i + 1;
-      while (j < page.panels.length && page.panels[j].y === panel.y) {
+      while (j < page.panels.length && Math.abs(page.panels[j].y - panel.y) <= PANEL_Y_TOLERANCE) {
         j++;
       }
       const subCount = j - i - 1;
       const isWide = panel.w / page.width >= WIDE_PANEL_RATIO;
 
-      // Always emit the row overview first.
-      expanded.push(panel);
-
       if (subCount > 0 || isWide) {
-        // Emit a page-width overview then page-width halves.
-        // Using page.width for BOTH the overview and the halves means:
-        //   • The overview box boundary aligns with the halves' outer edges, so
-        //     no spurious outline line from the overview appears inside a half's view.
-        //   • The transition overview → half is a pure zoom-in with no confusing pan.
-        //   • All three snaps cover the complete row including margin artwork.
+        // Rows with sub-panels or wide standalone panels: emit a LEFT half and
+        // RIGHT half only — no full-row overview.  Using page.width for both
+        // snaps keeps their box boundaries flush with the page edges, so no
+        // spurious outline line appears inside the halves' views.
         expanded.push(
-          { x: 0,     y: panel.y, w: page.width,          h: panel.h, centerX: halfW,                                    centerY: panel.centerY },
-          { x: 0,     y: panel.y, w: halfW,                h: panel.h, centerX: Math.round(halfW / 2),                    centerY: panel.centerY },
-          { x: halfW, y: panel.y, w: page.width - halfW,   h: panel.h, centerX: Math.round(halfW + (page.width - halfW) / 2), centerY: panel.centerY },
+          { x: 0,     y: panel.y, w: halfW,              h: panel.h, centerX: Math.round(halfW / 2),                        centerY: panel.centerY },
+          { x: halfW, y: panel.y, w: page.width - halfW, h: panel.h, centerX: Math.round(halfW + (page.width - halfW) / 2), centerY: panel.centerY },
         );
         i = j - 1; // skip sub-panels — consumed above
+      } else {
+        // Standalone narrow panel — single snap, no split.
+        expanded.push(panel);
       }
-      // else: standalone narrow panel — single snap only
     }
     return { ...page, panels: expanded };
   });
