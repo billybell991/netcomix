@@ -463,8 +463,9 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
         panels = [p for k, p in zip(keep, panels) if k]
 
     # ── Pass 2: catalog / gallery / splash heuristics ────────────────────
-    # Western comics: 3-6 panels is typical, 9 is a hard practical ceiling.
-    if len(panels) > 9:
+    # Western comics: 3-6 panels is typical, 12 is a practical ceiling
+    # (dense pages can have 8-10 panels; 9 was too aggressive).
+    if len(panels) > 12:
         panels = []
 
     if len(panels) >= 2:
@@ -596,6 +597,13 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     # Sort into reading order (top-to-bottom, left-to-right).
     bucket = max(int(h * 0.08), 20)
     panels.sort(key=lambda p: (p.y // bucket, p.x))
+
+    # ── Post-process: discard a lone dark-bg fallback panel that is too small
+    # to be the only panel on the page.  When the dark-bg blob flood-fill
+    # produces exactly 1 panel covering < 15% of the page, showing the full
+    # page is better than zooming into that 1 tiny panel.
+    if len(panels) == 1 and (panels[0].w * panels[0].h) / page_area < 0.15:
+        panels = []
 
     # Dominant color (mean of a downsampled copy — cheap and good enough for
     # the reader's letterbox background tint).
