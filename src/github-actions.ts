@@ -91,46 +91,52 @@ export async function commitComicToRepo(
   const { sha: blobSha } = await blobRes.json() as { sha: string };
   onProgress?.(0.6);
 
-  // 3. Get current HEAD commit + tree
-  const refRes = await fetch(`${base}/git/ref/heads/main`, { headers: authHeaders() });
-  if (!refRes.ok) { const b = await refRes.text(); throw new Error(`GitHub ${refRes.status}: ${b.slice(0, 300)}`); }
-  const { object: { sha: headSha } } = await refRes.json() as { object: { sha: string } };
+  // 3–6: build tree+commit+ref — retry on 422 (not-fast-forward) up to 3 times
+  for (let attempt = 0; attempt < 3; attempt++) {
+    // 3. Get current HEAD commit + tree
+    const refRes = await fetch(`${base}/git/ref/heads/main`, { headers: authHeaders() });
+    if (!refRes.ok) { const b = await refRes.text(); throw new Error(`GitHub ${refRes.status}: ${b.slice(0, 300)}`); }
+    const { object: { sha: headSha } } = await refRes.json() as { object: { sha: string } };
 
-  const commitRes = await fetch(`${base}/git/commits/${headSha}`, { headers: authHeaders() });
-  if (!commitRes.ok) { const b = await commitRes.text(); throw new Error(`GitHub ${commitRes.status}: ${b.slice(0, 300)}`); }
-  const { tree: { sha: treeSha } } = await commitRes.json() as { tree: { sha: string } };
+    const commitRes = await fetch(`${base}/git/commits/${headSha}`, { headers: authHeaders() });
+    if (!commitRes.ok) { const b = await commitRes.text(); throw new Error(`GitHub ${commitRes.status}: ${b.slice(0, 300)}`); }
+    const { tree: { sha: treeSha } } = await commitRes.json() as { tree: { sha: string } };
 
-  // 4. Create new tree referencing the blob
-  const treeRes = await fetch(`${base}/git/trees`, {
-    method: 'POST',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      base_tree: treeSha,
-      tree: [{ path: `comics-source/${file.name}`, mode: '100644', type: 'blob', sha: blobSha }],
-    }),
-  });
-  if (!treeRes.ok) { const b = await treeRes.text(); throw new Error(`GitHub ${treeRes.status}: ${b.slice(0, 300)}`); }
-  const { sha: newTreeSha } = await treeRes.json() as { sha: string };
-  onProgress?.(0.8);
+    // 4. Create new tree referencing the blob
+    const treeRes = await fetch(`${base}/git/trees`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        base_tree: treeSha,
+        tree: [{ path: `comics-source/${file.name}`, mode: '100644', type: 'blob', sha: blobSha }],
+      }),
+    });
+    if (!treeRes.ok) { const b = await treeRes.text(); throw new Error(`GitHub ${treeRes.status}: ${b.slice(0, 300)}`); }
+    const { sha: newTreeSha } = await treeRes.json() as { sha: string };
+    onProgress?.(0.8);
 
-  // 5. Create commit
-  const newCommitRes = await fetch(`${base}/git/commits`, {
-    method: 'POST',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: `add comic: ${file.name}`, tree: newTreeSha, parents: [headSha] }),
-  });
-  if (!newCommitRes.ok) { const b = await newCommitRes.text(); throw new Error(`GitHub ${newCommitRes.status}: ${b.slice(0, 300)}`); }
-  const { sha: newCommitSha } = await newCommitRes.json() as { sha: string };
+    // 5. Create commit
+    const newCommitRes = await fetch(`${base}/git/commits`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: `add comic: ${file.name}`, tree: newTreeSha, parents: [headSha] }),
+    });
+    if (!newCommitRes.ok) { const b = await newCommitRes.text(); throw new Error(`GitHub ${newCommitRes.status}: ${b.slice(0, 300)}`); }
+    const { sha: newCommitSha } = await newCommitRes.json() as { sha: string };
 
-  // 6. Update branch ref — tiny payload, validation completes well within 10s
-  onProgress?.(0.95);
-  const updateRes = await fetch(`${base}/git/refs/heads/main`, {
-    method: 'PATCH',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sha: newCommitSha }),
-  });
-  if (!updateRes.ok) { const b = await updateRes.text(); throw new Error(`GitHub ${updateRes.status}: ${b.slice(0, 300)}`); }
-  onProgress?.(1.0);
+    // 6. Update branch ref — retry on 422 (ref moved between step 3 and now)
+    onProgress?.(0.95);
+    const updateRes = await fetch(`${base}/git/refs/heads/main`, {
+      method: 'PATCH',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sha: newCommitSha }),
+    });
+    if (updateRes.status === 422 && attempt < 2) continue; // ref moved; re-read and retry
+    if (!updateRes.ok) { const b = await updateRes.text(); throw new Error(`GitHub ${updateRes.status}: ${b.slice(0, 300)}`); }
+    onProgress?.(1.0);
+    return;
+  }
+  throw new Error('Failed to push commit after 3 attempts (ref kept moving)');
 }
 
 export async function triggerRedetect(issueId: string): Promise<void> {
