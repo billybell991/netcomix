@@ -29,6 +29,7 @@ test.describe("NetComix critical path", () => {
     await expect(page.getByTestId("series-view")).toBeVisible();
     await expect(page.getByTestId("issue-card-tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero")).toBeVisible();
     await expect(page.getByTestId("issue-card-tales-from-the-crypt-v2-02-papercutz-2007-wildbluezero")).toBeVisible();
+    await expect(page.getByTestId("issue-card-tales-from-the-crypt-v2-03-papercutz-2007-papercutz-wildbluezero")).toBeVisible();
   });
 
   test("back button returns to library", async ({ page }) => {

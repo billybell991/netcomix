@@ -7,20 +7,6 @@
       "cover": "page-001.jpg",
       "issueCount": 3,
       "path": "tales-from-the-crypt-v2"
-    },
-    {
-      "id": "tales-from-the-crypt-v2-01-papercutz",
-      "title": "Tales from the Crypt v2 01 [Papercutz]",
-      "cover": "page-001.jpg",
-      "issueCount": 1,
-      "path": "tales-from-the-crypt-v2-01-papercutz"
-    },
-    {
-      "id": "issue01",
-      "title": "issue01",
-      "cover": "page-001.jpg",
-      "issueCount": 1,
-      "path": "issue01"
     }
   ]
 }
