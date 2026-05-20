@@ -7,16 +7,16 @@ test.describe("NetComix visual journey (watch this)", () => {
     await expect(page.getByTestId("library-view")).toBeVisible();
 
     // Favorite the series
-    await page.getByTestId("series-card-demo-series").first().locator(".card-fav").click();
+    await page.getByTestId("series-card-tales-from-the-crypt-v2").first().locator(".card-fav").click();
     await page.waitForTimeout(500);
 
     // Drill in
-    await page.getByTestId("series-card-demo-series").first().click();
+    await page.getByTestId("series-card-tales-from-the-crypt-v2").first().click();
     await page.waitForTimeout(800);
     await expect(page.getByTestId("series-view")).toBeVisible();
 
     // Open issue 1
-    await page.getByTestId("issue-card-issue-01").click();
+    await page.getByTestId("issue-card-tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero").click();
     await page.waitForTimeout(1000);
     await expect(page.getByTestId("reader")).toBeVisible();
 
@@ -79,9 +79,9 @@ test.describe("NetComix visual journey (watch this)", () => {
     const p = await ctx.newPage();
     await p.goto("/");
     await p.waitForTimeout(600);
-    await p.getByTestId("series-card-demo-series").click();
+    await p.getByTestId("series-card-tales-from-the-crypt-v2").click();
     await p.waitForTimeout(600);
-    await p.getByTestId("issue-card-issue-01").click();
+    await p.getByTestId("issue-card-tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero").click();
     await p.waitForTimeout(800);
     for (let i = 0; i < 4; i++) {
       await p.getByTestId("next-btn").click();

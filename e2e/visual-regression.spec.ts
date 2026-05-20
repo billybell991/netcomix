@@ -10,7 +10,7 @@ test.describe("Visual regression — pixel baselines", () => {
 
   test("series view — desktop", async ({ page }) => {
     await page.goto("/");
-    await page.getByTestId("series-card-demo-series").click();
+    await page.getByTestId("series-card-tales-from-the-crypt-v2").click();
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(400);
     await expect(page).toHaveScreenshot("series-desktop.png", { fullPage: true });
@@ -18,8 +18,8 @@ test.describe("Visual regression — pixel baselines", () => {
 
   test("reader — cover", async ({ page }) => {
     await page.goto("/");
-    await page.getByTestId("series-card-demo-series").click();
-    await page.getByTestId("issue-card-issue-01").click();
+    await page.getByTestId("series-card-tales-from-the-crypt-v2").click();
+    await page.getByTestId("issue-card-tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero").click();
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(700);
     await expect(page).toHaveScreenshot("reader-cover.png");
@@ -27,10 +27,12 @@ test.describe("Visual regression — pixel baselines", () => {
 
   test("reader — first panel snap", async ({ page }) => {
     await page.goto("/");
-    await page.getByTestId("series-card-demo-series").click();
-    await page.getByTestId("issue-card-issue-01").click();
+    await page.getByTestId("series-card-tales-from-the-crypt-v2").click();
+    await page.getByTestId("issue-card-tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero").click();
     await page.waitForTimeout(500);
-    // Cover → next page (full) → first panel
+    // Cover → page 2 (no panels) → page 3 first panel
+    await page.getByTestId("next-btn").click();
+    await page.waitForTimeout(500);
     await page.getByTestId("next-btn").click();
     await page.waitForTimeout(500);
     await page.getByTestId("next-btn").click();
@@ -40,12 +42,12 @@ test.describe("Visual regression — pixel baselines", () => {
 
   test("HUD open", async ({ page }) => {
     await page.goto("/");
-    await page.getByTestId("series-card-demo-series").click();
-    await page.getByTestId("issue-card-issue-01").click();
+    await page.getByTestId("series-card-tales-from-the-crypt-v2").click();
+    await page.getByTestId("issue-card-tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero").click();
     await page.waitForTimeout(500);
     const box = await page.getByTestId("reader").boundingBox();
     if (!box) throw new Error("no bounding box");
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
     await page.waitForTimeout(400);
     await expect(page).toHaveScreenshot("reader-hud.png");
   });

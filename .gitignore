@@ -46,7 +46,6 @@ public/comics/red-room/**/*.png
 public/comics/red-room/**/*.webp
 
 # Local-only artifacts
-public/comics/demo-series/
 scan-log.txt
 harvester/debug_*.jpg
 harvester/test_page*.py

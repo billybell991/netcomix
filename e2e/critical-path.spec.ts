@@ -10,7 +10,7 @@ const CONSOLE_NOISE = [
 ];
 
 test.describe("NetComix critical path", () => {
-  test("library page loads and shows demo series", async ({ page }) => {
+  test("library page loads and shows Tales from the Crypt v2", async ({ page }) => {
     const errors: string[] = [];
     page.on("console", (msg) => {
       if (msg.type() === "error" && !CONSOLE_NOISE.some((n) => msg.text().includes(n))) {
@@ -19,29 +19,29 @@ test.describe("NetComix critical path", () => {
     });
     await page.goto("/");
     await expect(page.getByTestId("library-view")).toBeVisible();
-    await expect(page.getByTestId("series-card-demo-series")).toBeVisible();
+    await expect(page.getByTestId("series-card-tales-from-the-crypt-v2")).toBeVisible();
     expect(errors).toEqual([]);
   });
 
   test("series view → issue list", async ({ page }) => {
     await page.goto("/");
-    await page.getByTestId("series-card-demo-series").click();
+    await page.getByTestId("series-card-tales-from-the-crypt-v2").click();
     await expect(page.getByTestId("series-view")).toBeVisible();
-    await expect(page.getByTestId("issue-card-issue-01")).toBeVisible();
-    await expect(page.getByTestId("issue-card-issue-02")).toBeVisible();
+    await expect(page.getByTestId("issue-card-tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero")).toBeVisible();
+    await expect(page.getByTestId("issue-card-tales-from-the-crypt-v2-02-papercutz-2007-wildbluezero")).toBeVisible();
   });
 
   test("back button returns to library", async ({ page }) => {
     await page.goto("/");
-    await page.getByTestId("series-card-demo-series").click();
+    await page.getByTestId("series-card-tales-from-the-crypt-v2").click();
     await page.getByTestId("back-btn").click();
     await expect(page.getByTestId("library-view")).toBeVisible();
   });
 
   test("opens a reader and shows the first page", async ({ page }) => {
     await page.goto("/");
-    await page.getByTestId("series-card-demo-series").click();
-    await page.getByTestId("issue-card-issue-01").click();
+    await page.getByTestId("series-card-tales-from-the-crypt-v2").click();
+    await page.getByTestId("issue-card-tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero").click();
     await expect(page.getByTestId("reader")).toBeVisible();
     await expect(page.getByTestId("page-image")).toBeVisible();
     await expect(page.getByTestId("next-btn")).toBeVisible();
@@ -50,8 +50,8 @@ test.describe("NetComix critical path", () => {
 
   test("snap loop: cover → next page → first panel → second panel", async ({ page }) => {
     await page.goto("/");
-    await page.getByTestId("series-card-demo-series").click();
-    await page.getByTestId("issue-card-issue-01").click();
+    await page.getByTestId("series-card-tales-from-the-crypt-v2").click();
+    await page.getByTestId("issue-card-tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero").click();
     const img = page.getByTestId("page-image");
     // Cover (page 0 full)
     const srcCover = await img.getAttribute("src");
@@ -75,8 +75,8 @@ test.describe("NetComix critical path", () => {
 
   test("HUD opens with double-tap and closes", async ({ page }) => {
     await page.goto("/");
-    await page.getByTestId("series-card-demo-series").click();
-    await page.getByTestId("issue-card-issue-01").click();
+    await page.getByTestId("series-card-tales-from-the-crypt-v2").click();
+    await page.getByTestId("issue-card-tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero").click();
     const box = await page.getByTestId("reader").boundingBox();
     if (!box) throw new Error("no bounding box");
     await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
@@ -87,16 +87,16 @@ test.describe("NetComix critical path", () => {
 
   test("HUD settings persist across reloads", async ({ page }) => {
     await page.goto("/");
-    await page.getByTestId("series-card-demo-series").click();
-    await page.getByTestId("issue-card-issue-01").click();
+    await page.getByTestId("series-card-tales-from-the-crypt-v2").click();
+    await page.getByTestId("issue-card-tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero").click();
     const box = await page.getByTestId("reader").boundingBox();
     if (!box) throw new Error("no bounding box");
     await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
     await page.getByTestId("sounds-toggle").click();
     // Reload, re-navigate (we don't persist route — only settings & progress)
     await page.reload();
-    await page.getByTestId("series-card-demo-series").first().click();
-    await page.getByTestId("issue-card-issue-01").click();
+    await page.getByTestId("series-card-tales-from-the-crypt-v2").first().click();
+    await page.getByTestId("issue-card-tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero").click();
     const box2 = await page.getByTestId("reader").boundingBox();
     if (!box2) throw new Error("no bounding box 2");
     await page.mouse.dblclick(box2.x + box2.width / 2, box2.y + box2.height / 2);
@@ -105,11 +105,11 @@ test.describe("NetComix critical path", () => {
 
   test("favorites toggle persists", async ({ page }) => {
     await page.goto("/");
-    const favBtn = page.getByTestId("series-card-demo-series").locator(".card-fav").first();
+    const favBtn = page.getByTestId("series-card-tales-from-the-crypt-v2").locator(".card-fav").first();
     await favBtn.click();
     await page.reload();
     await expect(
-      page.getByTestId("series-card-demo-series").locator(".card-fav.on").first()
+      page.getByTestId("series-card-tales-from-the-crypt-v2").locator(".card-fav.on").first()
     ).toBeVisible();
   });
 
