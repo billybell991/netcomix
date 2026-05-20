@@ -29,6 +29,17 @@ jobs:
       - name: Install Python deps
         run: pip install -r harvester/requirements-scan.txt
 
+      - name: Reassemble chunked uploads
+        run: |
+          shopt -s nullglob
+          for part1 in comics-source/*.part001; do
+            [ -e "$part1" ] || continue
+            base="${part1%.part001}"
+            echo "Reassembling $(basename $base) ..."
+            cat "$base".part* > "$base"
+            echo "  -> $(du -h "$base" | cut -f1)"
+          done
+
       - name: Process comics-source archives
         run: |
           shopt -s nullglob
@@ -42,6 +53,8 @@ jobs:
         run: |
           git config user.name "netcomix-bot"
           git config user.email "netcomix-bot@users.noreply.github.com"
+          # Remove committed part files now that they've been reassembled
+          git rm --ignore-unmatch -q comics-source/*.part* 2>/dev/null || true
           git add public/comics
           if git diff --cached --quiet; then
             echo "No manifest changes to commit."
