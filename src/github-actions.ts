@@ -61,61 +61,76 @@ export async function latestScanRun(): Promise<WorkflowRun | null> {
 }
 
 /**
- * Commit a CBR/CBZ archive to comics-source/ in the repo via GitHub Contents API.
- * Requires ghOwner, ghRepo, and ghToken to be configured.
+ * Commit a CBR/CBZ archive to comics-source/ using the Git Data API (blobs+trees+commits).
+ * This avoids the Contents API's 10-second branch-protection validation timeout that
+ * triggers on large files (the blob upload has no validation; only the tiny ref-update does).
  */
 export async function commitComicToRepo(
   file: File,
   onProgress?: (pct: number) => void,
 ): Promise<void> {
   const { ghOwner, ghRepo } = getConfig();
+  const base = `${GH_API}/repos/${ghOwner}/${ghRepo}`;
 
-  // Read and base64-encode via FileReader (handles binary correctly)
+  // 1. Read file as base64
   const base64 = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onprogress = (e) => { if (e.lengthComputable) onProgress?.(e.loaded / e.total * 0.35); };
-    reader.onload = () => {
-      onProgress?.(0.4);
-      resolve((reader.result as string).split(',')[1]);
-    };
+    reader.onprogress = (e) => { if (e.lengthComputable) onProgress?.(e.loaded / e.total * 0.3); };
+    reader.onload = () => { onProgress?.(0.35); resolve((reader.result as string).split(',')[1]); };
     reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
     reader.readAsDataURL(file);
   });
 
-  const filePath = `comics-source/${file.name}`;
+  // 2. Create blob — no branch-protection validation, just stores raw bytes
+  const blobRes = await fetch(`${base}/git/blobs`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: base64, encoding: 'base64' }),
+  });
+  if (!blobRes.ok) { const b = await blobRes.text(); throw new Error(`GitHub ${blobRes.status}: ${b.slice(0, 300)}`); }
+  const { sha: blobSha } = await blobRes.json() as { sha: string };
+  onProgress?.(0.6);
 
-  // Check if file already exists — need its SHA to update rather than create
-  let sha: string | undefined;
-  const checkRes = await fetch(
-    `${GH_API}/repos/${ghOwner}/${ghRepo}/contents/${filePath}`,
-    { headers: authHeaders() }
-  );
-  if (checkRes.ok) {
-    const existing = (await checkRes.json()) as { sha: string };
-    sha = existing.sha;
-  }
+  // 3. Get current HEAD commit + tree
+  const refRes = await fetch(`${base}/git/ref/heads/main`, { headers: authHeaders() });
+  if (!refRes.ok) { const b = await refRes.text(); throw new Error(`GitHub ${refRes.status}: ${b.slice(0, 300)}`); }
+  const { object: { sha: headSha } } = await refRes.json() as { object: { sha: string } };
 
-  onProgress?.(0.5);
+  const commitRes = await fetch(`${base}/git/commits/${headSha}`, { headers: authHeaders() });
+  if (!commitRes.ok) { const b = await commitRes.text(); throw new Error(`GitHub ${commitRes.status}: ${b.slice(0, 300)}`); }
+  const { tree: { sha: treeSha } } = await commitRes.json() as { tree: { sha: string } };
 
-  const res = await fetch(
-    `${GH_API}/repos/${ghOwner}/${ghRepo}/contents/${filePath}`,
-    {
-      method: 'PUT',
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: `add comic: ${file.name}`,
-        content: base64,
-        ...(sha ? { sha } : {}),
-      }),
-    }
-  );
+  // 4. Create new tree referencing the blob
+  const treeRes = await fetch(`${base}/git/trees`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      base_tree: treeSha,
+      tree: [{ path: `comics-source/${file.name}`, mode: '100644', type: 'blob', sha: blobSha }],
+    }),
+  });
+  if (!treeRes.ok) { const b = await treeRes.text(); throw new Error(`GitHub ${treeRes.status}: ${b.slice(0, 300)}`); }
+  const { sha: newTreeSha } = await treeRes.json() as { sha: string };
+  onProgress?.(0.8);
 
+  // 5. Create commit
+  const newCommitRes = await fetch(`${base}/git/commits`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: `add comic: ${file.name}`, tree: newTreeSha, parents: [headSha] }),
+  });
+  if (!newCommitRes.ok) { const b = await newCommitRes.text(); throw new Error(`GitHub ${newCommitRes.status}: ${b.slice(0, 300)}`); }
+  const { sha: newCommitSha } = await newCommitRes.json() as { sha: string };
+
+  // 6. Update branch ref — tiny payload, validation completes well within 10s
+  onProgress?.(0.95);
+  const updateRes = await fetch(`${base}/git/refs/heads/main`, {
+    method: 'PATCH',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sha: newCommitSha }),
+  });
+  if (!updateRes.ok) { const b = await updateRes.text(); throw new Error(`GitHub ${updateRes.status}: ${b.slice(0, 300)}`); }
   onProgress?.(1.0);
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`GitHub ${res.status}: ${body.slice(0, 300)}`);
-  }
 }
 
 export async function triggerRedetect(issueId: string): Promise<void> {
