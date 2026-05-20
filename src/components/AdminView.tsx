@@ -55,23 +55,45 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
     e.target.value = "";
   };
 
+  const MAX_UPLOAD_BYTES = 29 * 1024 * 1024; // ~38 MB base64 — safely under GitHub's API limit
+
   const onUpload = async () => {
     if (!uploadFiles.length) return;
     setUploading(true);
     setUploadProgress(0);
     setUploadError(null);
     setUploadDone(false);
-    const n = uploadFiles.length;
+
+    const toUpload = uploadFiles.filter((f) => f.size <= MAX_UPLOAD_BYTES);
+    const tooBig  = uploadFiles.filter((f) => f.size >  MAX_UPLOAD_BYTES);
+    const n = toUpload.length;
+
     try {
       for (let i = 0; i < n; i++) {
-        await commitComicToRepo(uploadFiles[i], (pct) => setUploadProgress((i + pct) / n));
+        await commitComicToRepo(toUpload[i], (pct) => setUploadProgress((i + pct) / Math.max(n, 1)));
       }
-      setUploadDone(true);
-      setUploadFiles([]);
-      await triggerScan();
-      await refresh();
+      if (n > 0) {
+        setUploadDone(true);
+        await triggerScan();
+        await refresh();
+      }
+      setUploadFiles(tooBig); // keep oversized in queue so user sees them
+      if (tooBig.length > 0) {
+        const names = tooBig.map((f) => `"${f.name}"`).join(", ");
+        setUploadError(
+          `${tooBig.length} file(s) exceed the 29 MB browser upload limit: ${names}.\n` +
+          `Add them directly from your local repo:\n` +
+          tooBig.map((f) => `  git add "comics-source/${f.name}" && git push`).join("\n")
+        );
+      }
     } catch (e) {
-      setUploadError(String(e));
+      const msg = String(e);
+      setUploadError(
+        msg.includes("Failed to fetch")
+          ? `Network error — the file may be too large for browser upload (max ~29 MB). ` +
+            `Add it directly: git add "comics-source/..." && git push`
+          : msg
+      );
     } finally {
       setUploading(false);
     }
@@ -160,7 +182,9 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
               {uploadFiles.map((f) => (
                 <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 8, background: "#111", borderRadius: 6, padding: "5px 10px", fontSize: 12 }}>
                   <span style={{ flex: 1, color: "#ccc", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
-                  <span style={{ color: "#666", flexShrink: 0 }}>{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                  <span style={{ color: f.size > MAX_UPLOAD_BYTES ? "#ffb300" : "#666", flexShrink: 0 }}>
+                    {(f.size / 1024 / 1024).toFixed(1)} MB{f.size > MAX_UPLOAD_BYTES ? " ⚠ too large" : ""}
+                  </span>
                   {!uploading && (
                     <button
                       onClick={() => setUploadFiles((prev) => prev.filter((x) => x.name !== f.name))}
@@ -181,7 +205,7 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
             </div>
           )}
 
-          {uploadError && <p style={{ color: "#e53935", fontSize: 13, margin: "6px 0" }}>{uploadError}</p>}
+          {uploadError && <pre style={{ color: "#e53935", fontSize: 12, margin: "6px 0", whiteSpace: "pre-wrap", wordBreak: "break-word", background: "#1a0000", padding: "8px 10px", borderRadius: 6 }}>{uploadError}</pre>}
           {uploadDone && <p style={{ color: "#4caf50", fontSize: 13, margin: "6px 0" }}>✓ Committed — scan triggered</p>}
 
           <button
