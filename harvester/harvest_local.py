@@ -33,10 +33,11 @@ SEVENZIP = next(
      if os.path.exists(p)),
     shutil.which("7z"),  # Linux/macOS: p7zip-full provides 7z in PATH
 )
+UNAR = shutil.which("unar")  # The Unarchiver — better RAR5 support on Linux
 
 
 def extract_pages_local(archive: Path, out_dir: Path) -> list[Path]:
-    """Extract pages using 7z (works for both cbz and cbr)."""
+    """Extract pages from CBZ (zipfile) or CBR (unar preferred, 7z fallback)."""
     out_dir.mkdir(parents=True, exist_ok=True)
     ext = archive.suffix.lower()
     pages: list[Path] = []
@@ -48,12 +49,19 @@ def extract_pages_local(archive: Path, out_dir: Path) -> list[Path]:
             with zipfile.ZipFile(archive) as zf:
                 zf.extractall(tmp)
         elif ext in {".cbr", ".rar"}:
-            if not SEVENZIP:
-                sys.exit("7-Zip not found; install it or use a .cbz file")
-            subprocess.run(
-                [SEVENZIP, "x", "-y", f"-o{tmp}", str(archive)],
-                check=True, capture_output=True,
-            )
+            if UNAR:
+                # unar handles RAR1-5 without crashing; -D = no containing subdir
+                subprocess.run(
+                    [UNAR, "-o", str(tmp), "-f", "-D", str(archive)],
+                    check=True, capture_output=True,
+                )
+            elif SEVENZIP:
+                subprocess.run(
+                    [SEVENZIP, "x", "-y", f"-o{tmp}", str(archive)],
+                    check=True, capture_output=True,
+                )
+            else:
+                sys.exit("Neither unar nor 7-Zip found; install unar or p7zip-full")
         else:
             sys.exit(f"unsupported archive: {archive}")
 
