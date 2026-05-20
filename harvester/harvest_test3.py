@@ -446,11 +446,11 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
         if cw < min_panel_w or ch < min_panel_h:
             continue
         # Must be at least 8 % of total page area (kills thumbnail-sized boxes).
-        if (cw * ch) / page_area < 0.08:
+        if (cw * ch) / page_area < 0.04:
             continue
         # Sane aspect ratio: 0.15 ≤ w/h ≤ 6.0  (drops degenerate slivers).
         aspect = cw / ch if ch > 0 else 0
-        if not (0.15 <= aspect <= 6.0):
+        if not (0.15 <= aspect <= 8.0):
             continue
         # Drop a single rect that covers the whole inked area — the page is a
         # splash and the reader should show the full page instead.

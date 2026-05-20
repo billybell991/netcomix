@@ -117,7 +117,7 @@ export function App() {
         index={seriesIndex}
         onBack={() => setRoute({ name: "library" })}
         onSelectIssue={(issue) => setRoute({ name: "reader", series: route.series, issue })}
-        coverUrl={(file, fileId, r2Url) => coverUrl(route.name === "series" ? route.series.path : "", file, fileId, r2Url)}
+        coverUrl={(file, fileId, r2Url) => coverUrl("", file, fileId, r2Url)}
       />
     );
   }

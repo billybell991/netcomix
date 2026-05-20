@@ -167,7 +167,7 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
         </button>
         <h1>Admin</h1>
       </div>
-      <div className="shell-body" style={{ maxWidth: 640, margin: "0 auto" }}>
+      <div className="shell-body" style={{ width: "100%", maxWidth: 640, alignSelf: "center" }}>
 
         {/* ── Upload Comics ─────────────────────────────────────── */}
         <section style={{ marginBottom: 24 }}>
@@ -330,7 +330,7 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
                       <div style={{ color: "#ccc", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {iss.seriesTitle} — {iss.title}
                       </div>
-                      <div style={{ color: "#555", fontSize: 11 }}>{iss.pageCount} pages · {iss.id}</div>
+                      <div style={{ color: "#555", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{iss.pageCount} pages · {iss.id}</div>
                     </div>
                     <button
                       disabled={!ghConfigured || !!redetectingId}

@@ -1,0 +1,13 @@
+{
+  "id": "issue01",
+  "title": "issue01",
+  "issues": [
+    {
+      "id": "issue01",
+      "title": "issue01",
+      "cover": "page-001.jpg",
+      "pageCount": 48,
+      "path": "issue01/issue01"
+    }
+  ]
+}

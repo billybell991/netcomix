@@ -1,0 +1,1295 @@
+{
+  "id": "red-room-001-2021-digital-phillywilly-empire-1yyGum",
+  "title": "Red Room #001",
+  "series": "red-room",
+  "cover": "page-001.jpg",
+  "pages": [
+    {
+      "file": "page-001.jpg",
+      "fileId": "1Gd8tDr7VS0TzJLGkEBO9BEoLBLcJ0a7x",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 46,
+          "y": 129,
+          "w": 423,
+          "h": 303,
+          "centerX": 257,
+          "centerY": 280
+        },
+        {
+          "x": 336,
+          "y": 134,
+          "w": 834,
+          "h": 1666,
+          "centerX": 753,
+          "centerY": 967
+        }
+      ],
+      "dominantColor": "#b95a4f"
+    },
+    {
+      "file": "page-002.jpg",
+      "fileId": "1bPsO6ZZIMMpgqIAhxHZ79AuiBaprOg_a",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 88,
+          "y": 198,
+          "w": 222,
+          "h": 341,
+          "centerX": 199,
+          "centerY": 368
+        },
+        {
+          "x": 341,
+          "y": 198,
+          "w": 222,
+          "h": 342,
+          "centerX": 452,
+          "centerY": 369
+        },
+        {
+          "x": 595,
+          "y": 198,
+          "w": 222,
+          "h": 347,
+          "centerX": 706,
+          "centerY": 371
+        },
+        {
+          "x": 848,
+          "y": 198,
+          "w": 223,
+          "h": 342,
+          "centerX": 959,
+          "centerY": 369
+        },
+        {
+          "x": 88,
+          "y": 632,
+          "w": 222,
+          "h": 342,
+          "centerX": 199,
+          "centerY": 803
+        },
+        {
+          "x": 341,
+          "y": 632,
+          "w": 222,
+          "h": 342,
+          "centerX": 452,
+          "centerY": 803
+        },
+        {
+          "x": 595,
+          "y": 632,
+          "w": 223,
+          "h": 342,
+          "centerX": 706,
+          "centerY": 803
+        },
+        {
+          "x": 854,
+          "y": 631,
+          "w": 215,
+          "h": 339,
+          "centerX": 961,
+          "centerY": 800
+        },
+        {
+          "x": 102,
+          "y": 1318,
+          "w": 962,
+          "h": 156,
+          "centerX": 583,
+          "centerY": 1396
+        }
+      ],
+      "dominantColor": "#ccc084"
+    },
+    {
+      "file": "page-003.jpg",
+      "fileId": "1hAf-qTSJ83b_1_lKeqxf9rcoQTHykWad",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 43,
+          "y": 85,
+          "w": 1085,
+          "h": 1628,
+          "centerX": 585,
+          "centerY": 899
+        }
+      ],
+      "dominantColor": "#b8b5a6"
+    },
+    {
+      "file": "page-004.jpg",
+      "fileId": "1IGIKUTyGHEMTT7DReeYR0FM0vxSUjl0k",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 37,
+          "y": 80,
+          "w": 220,
+          "h": 179,
+          "centerX": 147,
+          "centerY": 169
+        },
+        {
+          "x": 59,
+          "y": 84,
+          "w": 1069,
+          "h": 542,
+          "centerX": 593,
+          "centerY": 355
+        },
+        {
+          "x": 43,
+          "y": 633,
+          "w": 1091,
+          "h": 1078,
+          "centerX": 588,
+          "centerY": 1172
+        }
+      ],
+      "dominantColor": "#bdb8a9"
+    },
+    {
+      "file": "page-005.jpg",
+      "fileId": "1eMUnQ-KwH_SCUm8y8URkXPMbSgfxch80",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 45,
+          "y": 83,
+          "w": 1097,
+          "h": 1630,
+          "centerX": 593,
+          "centerY": 898
+        }
+      ],
+      "dominantColor": "#bab5a6"
+    },
+    {
+      "file": "page-006.jpg",
+      "fileId": "1gRvhiwun9N53dWTQqGQe5Q97oG4zHM7I",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#8a8b7b"
+    },
+    {
+      "file": "page-007.jpg",
+      "fileId": "1_h-rFCrr4SOXQYWB4EVtDfmmHYKzazMg",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#8a8b7d"
+    },
+    {
+      "file": "page-008.jpg",
+      "fileId": "1L_crKv4P8fcXz_mnHPueoyv98OlrQdaa",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#8c8e81"
+    },
+    {
+      "file": "page-009.jpg",
+      "fileId": "1nYnjMThxg8GxdczgkGzhc1fVAc2kOcLz",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#848779"
+    },
+    {
+      "file": "page-010.jpg",
+      "fileId": "1nGZQETFVb-QlNuMnEf2lmahJh3PaeDge",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#8f8f7f"
+    },
+    {
+      "file": "page-011.jpg",
+      "fileId": "1vxXLmkFdiTU8VS14BrGY4d0dbMdrDFeR",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#8a8c7f"
+    },
+    {
+      "file": "page-012.jpg",
+      "fileId": "1RAt-34aBvtJzOJ-f_H4UanUddDjvQYdB",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 41,
+          "y": 86,
+          "w": 1085,
+          "h": 1647,
+          "centerX": 583,
+          "centerY": 909
+        }
+      ],
+      "dominantColor": "#b0ad9f"
+    },
+    {
+      "file": "page-013.jpg",
+      "fileId": "18L4o1bT-jwaoZYedCNPiC_-h0nOAbdR3",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 38,
+          "y": 76,
+          "w": 1091,
+          "h": 1633,
+          "centerX": 583,
+          "centerY": 892
+        },
+        {
+          "x": 615,
+          "y": 1396,
+          "w": 390,
+          "h": 313,
+          "centerX": 810,
+          "centerY": 1552
+        }
+      ],
+      "dominantColor": "#9f9e8f"
+    },
+    {
+      "file": "page-014.jpg",
+      "fileId": "1gEqXuNMwL2K5Fmwl6TSci-XpJV6IwN14",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#8b8d7f"
+    },
+    {
+      "file": "page-015.jpg",
+      "fileId": "1G4eFuAklrasVk6Zg5PQNDBqNrPQJ2P7H",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#787d70"
+    },
+    {
+      "file": "page-016.jpg",
+      "fileId": "1RVrt9C1RxvhukCJs-aoopXK80ERcDR6U",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 46,
+          "y": 84,
+          "w": 1083,
+          "h": 1262,
+          "centerX": 587,
+          "centerY": 715
+        },
+        {
+          "x": 51,
+          "y": 227,
+          "w": 183,
+          "h": 261,
+          "centerX": 142,
+          "centerY": 357
+        },
+        {
+          "x": 46,
+          "y": 1351,
+          "w": 1077,
+          "h": 369,
+          "centerX": 584,
+          "centerY": 1535
+        }
+      ],
+      "dominantColor": "#bcb7a8"
+    },
+    {
+      "file": "page-017.jpg",
+      "fileId": "15M8U8qW5c-xk-EpfFXeapPuBlZwbB3Gj",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 40,
+          "y": 88,
+          "w": 1089,
+          "h": 392,
+          "centerX": 584,
+          "centerY": 284
+        },
+        {
+          "x": 41,
+          "y": 490,
+          "w": 728,
+          "h": 591,
+          "centerX": 405,
+          "centerY": 785
+        },
+        {
+          "x": 777,
+          "y": 490,
+          "w": 355,
+          "h": 592,
+          "centerX": 954,
+          "centerY": 786
+        },
+        {
+          "x": 40,
+          "y": 1090,
+          "w": 1094,
+          "h": 620,
+          "centerX": 587,
+          "centerY": 1400
+        }
+      ],
+      "dominantColor": "#c5bfaf"
+    },
+    {
+      "file": "page-018.jpg",
+      "fileId": "1NBI9OtfppIKglrGdrVEv3m-rnvYtPiTT",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#84877a"
+    },
+    {
+      "file": "page-019.jpg",
+      "fileId": "1WUgMU0p-uckCBuA8y64ElLBpX2LuBrLJ",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#808477"
+    },
+    {
+      "file": "page-020.jpg",
+      "fileId": "15gx1SjaZrpocHGRXKQ1b9hcXIUiYXfBq",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#8e9082"
+    },
+    {
+      "file": "page-021.jpg",
+      "fileId": "1XCI9Ph3yHVMuK-NCpacQXuMkwHJIH646",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#8f9183"
+    },
+    {
+      "file": "page-022.jpg",
+      "fileId": "1KMKcLDf4ypnLODF4sJCSvJEblLWIwZ2W",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#949587"
+    },
+    {
+      "file": "page-023.jpg",
+      "fileId": "1tdrjNC3QyQ1rIx6o0EriZ9vWcwoe8XBX",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#8b8d80"
+    },
+    {
+      "file": "page-024.jpg",
+      "fileId": "1-EZC8vRE-5EjaApV0OHGQQrCzCE5rqdE",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#98998c"
+    },
+    {
+      "file": "page-025.jpg",
+      "fileId": "1FPkmGGIr-pHQN3LSXt2Wjg0Iz3tMtidD",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 29,
+          "y": 89,
+          "w": 1111,
+          "h": 1672,
+          "centerX": 584,
+          "centerY": 925
+        }
+      ],
+      "dominantColor": "#c8c3b4"
+    },
+    {
+      "file": "page-026.jpg",
+      "fileId": "1tHnukRdHPZOeFWkg-xtwVF0SyO2vg9fz",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 42,
+          "y": 83,
+          "w": 1088,
+          "h": 410,
+          "centerX": 586,
+          "centerY": 288
+        },
+        {
+          "x": 761,
+          "y": 251,
+          "w": 323,
+          "h": 222,
+          "centerX": 922,
+          "centerY": 362
+        },
+        {
+          "x": 32,
+          "y": 499,
+          "w": 1097,
+          "h": 789,
+          "centerX": 580,
+          "centerY": 893
+        },
+        {
+          "x": 43,
+          "y": 1297,
+          "w": 1104,
+          "h": 418,
+          "centerX": 595,
+          "centerY": 1506
+        }
+      ],
+      "dominantColor": "#bebaab"
+    },
+    {
+      "file": "page-027.jpg",
+      "fileId": "1YKkVFS5r7IEZJiDBvBZE8fa9E0X8UmQF",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#97988a"
+    },
+    {
+      "file": "page-028.jpg",
+      "fileId": "1fhSDovll5ZDEZgkCKQPm6pvfX2AJx8N9",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#98998d"
+    },
+    {
+      "file": "page-029.jpg",
+      "fileId": "1tg9zN6tvZjAgLr5r757MlXdj_moBenHI",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#909184"
+    },
+    {
+      "file": "page-030.jpg",
+      "fileId": "1pQKaaIif831UCozGOgnYbxmtm_CM0bk-",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#87897c"
+    },
+    {
+      "file": "page-031.jpg",
+      "fileId": "1NhDZa8i1ECYe_m6WSrOyU1L7Rhxzypc1",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#909285"
+    },
+    {
+      "file": "page-032.jpg",
+      "fileId": "1ECP2xP2pmC3kMlX9pEg9_gIyFlBjqZLO",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 36,
+          "y": 66,
+          "w": 1084,
+          "h": 560,
+          "centerX": 578,
+          "centerY": 346
+        },
+        {
+          "x": 36,
+          "y": 633,
+          "w": 1085,
+          "h": 1078,
+          "centerX": 578,
+          "centerY": 1172
+        },
+        {
+          "x": 37,
+          "y": 1176,
+          "w": 258,
+          "h": 536,
+          "centerX": 166,
+          "centerY": 1444
+        }
+      ],
+      "dominantColor": "#b8b5a6"
+    },
+    {
+      "file": "page-033.jpg",
+      "fileId": "1gXrdtkNSjq8RerNADmoM01N2nBn_Qe7U",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 32,
+          "y": 89,
+          "w": 1122,
+          "h": 1628,
+          "centerX": 593,
+          "centerY": 903
+        },
+        {
+          "x": 327,
+          "y": 84,
+          "w": 790,
+          "h": 716,
+          "centerX": 722,
+          "centerY": 442
+        },
+        {
+          "x": 765,
+          "y": 1176,
+          "w": 355,
+          "h": 542,
+          "centerX": 942,
+          "centerY": 1447
+        }
+      ],
+      "dominantColor": "#bbb7a8"
+    },
+    {
+      "file": "page-034.jpg",
+      "fileId": "1kghM10ABHseSd29q4OfO_AWf1lgKC7q-",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#828475"
+    },
+    {
+      "file": "page-035.jpg",
+      "fileId": "1zhbzSlO8E81f0LFy-YYRWipQ4E4N46lx",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 587,
+          "y": 0,
+          "w": 583,
+          "h": 168,
+          "centerX": 878,
+          "centerY": 84
+        },
+        {
+          "x": 0,
+          "y": 119,
+          "w": 1170,
+          "h": 1036,
+          "centerX": 585,
+          "centerY": 637
+        },
+        {
+          "x": 151,
+          "y": 127,
+          "w": 320,
+          "h": 262,
+          "centerX": 311,
+          "centerY": 258
+        },
+        {
+          "x": 889,
+          "y": 134,
+          "w": 281,
+          "h": 385,
+          "centerX": 1029,
+          "centerY": 326
+        },
+        {
+          "x": 791,
+          "y": 393,
+          "w": 178,
+          "h": 268,
+          "centerX": 880,
+          "centerY": 527
+        },
+        {
+          "x": 961,
+          "y": 511,
+          "w": 209,
+          "h": 168,
+          "centerX": 1065,
+          "centerY": 595
+        },
+        {
+          "x": 151,
+          "y": 1110,
+          "w": 239,
+          "h": 201,
+          "centerX": 270,
+          "centerY": 1210
+        },
+        {
+          "x": 438,
+          "y": 1089,
+          "w": 440,
+          "h": 447,
+          "centerX": 658,
+          "centerY": 1312
+        },
+        {
+          "x": 793,
+          "y": 1096,
+          "w": 377,
+          "h": 530,
+          "centerX": 981,
+          "centerY": 1361
+        },
+        {
+          "x": 255,
+          "y": 1347,
+          "w": 650,
+          "h": 453,
+          "centerX": 580,
+          "centerY": 1573
+        },
+        {
+          "x": 0,
+          "y": 1470,
+          "w": 187,
+          "h": 330,
+          "centerX": 93,
+          "centerY": 1635
+        },
+        {
+          "x": 960,
+          "y": 1478,
+          "w": 210,
+          "h": 170,
+          "centerX": 1065,
+          "centerY": 1563
+        }
+      ],
+      "dominantColor": "#14271b"
+    },
+    {
+      "file": "page-036.jpg",
+      "fileId": "1exrmuTE3CFpptIhLWE2qcvJXrbCjIBnP",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 292,
+          "h": 366,
+          "centerX": 146,
+          "centerY": 183
+        },
+        {
+          "x": 278,
+          "y": 0,
+          "w": 677,
+          "h": 474,
+          "centerX": 616,
+          "centerY": 237
+        },
+        {
+          "x": 680,
+          "y": 203,
+          "w": 292,
+          "h": 265,
+          "centerX": 826,
+          "centerY": 335
+        },
+        {
+          "x": 957,
+          "y": 192,
+          "w": 213,
+          "h": 159,
+          "centerX": 1063,
+          "centerY": 271
+        },
+        {
+          "x": 455,
+          "y": 307,
+          "w": 430,
+          "h": 431,
+          "centerX": 670,
+          "centerY": 522
+        },
+        {
+          "x": 899,
+          "y": 358,
+          "w": 271,
+          "h": 360,
+          "centerX": 1034,
+          "centerY": 538
+        },
+        {
+          "x": 165,
+          "y": 519,
+          "w": 254,
+          "h": 205,
+          "centerX": 292,
+          "centerY": 621
+        },
+        {
+          "x": 0,
+          "y": 690,
+          "w": 1170,
+          "h": 993,
+          "centerX": 585,
+          "centerY": 1186
+        },
+        {
+          "x": 797,
+          "y": 1162,
+          "w": 179,
+          "h": 272,
+          "centerX": 886,
+          "centerY": 1298
+        },
+        {
+          "x": 979,
+          "y": 1144,
+          "w": 191,
+          "h": 165,
+          "centerX": 1074,
+          "centerY": 1226
+        },
+        {
+          "x": 892,
+          "y": 1300,
+          "w": 278,
+          "h": 385,
+          "centerX": 1031,
+          "centerY": 1492
+        },
+        {
+          "x": 152,
+          "y": 1431,
+          "w": 327,
+          "h": 258,
+          "centerX": 315,
+          "centerY": 1560
+        }
+      ],
+      "dominantColor": "#192b20"
+    },
+    {
+      "file": "page-037.jpg",
+      "fileId": "1HYUj5OJbMSXq_k_1W-BZs00IGo74aLjq",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#818478"
+    },
+    {
+      "file": "page-038.jpg",
+      "fileId": "1I44OgLZjbpSLKaOb6qap811uWKuUsKQ3",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#8a8d7f"
+    },
+    {
+      "file": "page-039.jpg",
+      "fileId": "15jodoQYofvMQ4Tjqe6mBDs87gx92qqtj",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#878b7f"
+    },
+    {
+      "file": "page-040.jpg",
+      "fileId": "1KH5cWT36Qdsm0m4HbqFfddIpxMO_wVMw",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 44,
+          "y": 86,
+          "w": 1082,
+          "h": 1629,
+          "centerX": 585,
+          "centerY": 900
+        },
+        {
+          "x": 764,
+          "y": 641,
+          "w": 361,
+          "h": 1085,
+          "centerX": 944,
+          "centerY": 1183
+        }
+      ],
+      "dominantColor": "#b4b09f"
+    },
+    {
+      "file": "page-041.jpg",
+      "fileId": "1CJmR5jY-LMbdVMrYGHDmS9pU5YHz_2vV",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 42,
+          "y": 80,
+          "w": 1082,
+          "h": 503,
+          "centerX": 583,
+          "centerY": 331
+        },
+        {
+          "x": 41,
+          "y": 592,
+          "w": 1084,
+          "h": 1123,
+          "centerX": 583,
+          "centerY": 1153
+        },
+        {
+          "x": 779,
+          "y": 593,
+          "w": 367,
+          "h": 494,
+          "centerX": 962,
+          "centerY": 840
+        }
+      ],
+      "dominantColor": "#b2b0a2"
+    },
+    {
+      "file": "page-042.jpg",
+      "fileId": "1_d2YCrSF5cxNNhZAnGhylHT8WcmnZGN8",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#7b7f72"
+    },
+    {
+      "file": "page-043.jpg",
+      "fileId": "1R8_iPQUl_DbzegoB-ZyLAsrtXDkfu7VG",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#7d8275"
+    },
+    {
+      "file": "page-044.jpg",
+      "fileId": "12tLNXGwGwzG4hfIIuDR2oWRWZ5R97Afi",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#7a7e6f"
+    },
+    {
+      "file": "page-045.jpg",
+      "fileId": "1Lrle1Hh2RlLGm2OE0FD3H-w3DppwAv-v",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#85877a"
+    },
+    {
+      "file": "page-046.jpg",
+      "fileId": "1RE1lojjt7wC-RBVFP_rCh71CK0uZK7nq",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#8f9083"
+    },
+    {
+      "file": "page-047.jpg",
+      "fileId": "1-YpyIivoRjKbp7ruZbt-Cm8eBKUM2DyQ",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#848679"
+    },
+    {
+      "file": "page-048.jpg",
+      "fileId": "16lBWzmX57eKyP20brpFDokbAggsTctEX",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#898a7c"
+    },
+    {
+      "file": "page-049.jpg",
+      "fileId": "1Zb0T48lIY7rAnlCNOy7VzhJlQlHDFBo3",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#808477"
+    },
+    {
+      "file": "page-050.jpg",
+      "fileId": "1x8jTZwkvMaF1IxtfIikEYEHlBudIwAru",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#777c6e"
+    },
+    {
+      "file": "page-051.jpg",
+      "fileId": "1bpba37b-53MlGI2uIi1RH8_JUOp3i8Rh",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#6c7265"
+    },
+    {
+      "file": "page-052.jpg",
+      "fileId": "1xkvFDKVtnzpnz_UJWv6umw1W3tRqSh9F",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#888a7c"
+    },
+    {
+      "file": "page-053.jpg",
+      "fileId": "1E0Gr3MEYtdCPN49kTJQSlllUKqJkAhbM",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#787c6f"
+    },
+    {
+      "file": "page-054.jpg",
+      "fileId": "1V3WSfFvLkbDNTJGGYXOx4qxmRmCUAxZz",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#828578"
+    },
+    {
+      "file": "page-055.jpg",
+      "fileId": "17C_AXzGDLqfzu7m92dtQNfPRnoXumwFk",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#898c7f"
+    },
+    {
+      "file": "page-056.jpg",
+      "fileId": "1iW3cmmtn59qaDeCXJXPc2xl19h8LKSg0",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#86897c"
+    },
+    {
+      "file": "page-057.jpg",
+      "fileId": "1Z_668t5A0dr5g-iH28P1-uvHA0oRb4JM",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#83877a"
+    },
+    {
+      "file": "page-058.jpg",
+      "fileId": "1v9qICFx1qYVe3N0v2M7_r0yZ3Y6XfacH",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#989b91"
+    },
+    {
+      "file": "page-059.jpg",
+      "fileId": "1t_uHyMPxIOhf-jAL4i_nkbqLpQCq0sCm",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#9fa197"
+    },
+    {
+      "file": "page-060.jpg",
+      "fileId": "1erAE3Lqeyfqenbmbfr6ZsK-VMk4lFhp6",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#838679"
+    },
+    {
+      "file": "page-061.jpg",
+      "fileId": "1L6nYNHK868run80tth3C5q_yiiyjGIVW",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#84877a"
+    },
+    {
+      "file": "page-062.jpg",
+      "fileId": "1Z6bnngM4I31JVv_wTlOAD-NLY0PFCQc6",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 524,
+          "y": 70,
+          "w": 614,
+          "h": 431,
+          "centerX": 831,
+          "centerY": 285
+        },
+        {
+          "x": 46,
+          "y": 92,
+          "w": 166,
+          "h": 409,
+          "centerX": 129,
+          "centerY": 296
+        },
+        {
+          "x": 227,
+          "y": 195,
+          "w": 305,
+          "h": 306,
+          "centerX": 379,
+          "centerY": 348
+        },
+        {
+          "x": 43,
+          "y": 513,
+          "w": 436,
+          "h": 495,
+          "centerX": 261,
+          "centerY": 760
+        },
+        {
+          "x": 490,
+          "y": 512,
+          "w": 667,
+          "h": 1200,
+          "centerX": 823,
+          "centerY": 1112
+        },
+        {
+          "x": 45,
+          "y": 1023,
+          "w": 732,
+          "h": 724,
+          "centerX": 411,
+          "centerY": 1385
+        }
+      ],
+      "dominantColor": "#bdb8a9"
+    },
+    {
+      "file": "page-063.jpg",
+      "fileId": "1keh3QFeDKEQ89n10y8aNVr9s9MhZ0340",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1170,
+          "h": 1703,
+          "centerX": 585,
+          "centerY": 851
+        },
+        {
+          "x": 811,
+          "y": 1010,
+          "w": 317,
+          "h": 288,
+          "centerX": 969,
+          "centerY": 1154
+        },
+        {
+          "x": 784,
+          "y": 1239,
+          "w": 363,
+          "h": 478,
+          "centerX": 965,
+          "centerY": 1478
+        }
+      ],
+      "dominantColor": "#aaa89a"
+    },
+    {
+      "file": "page-064.jpg",
+      "fileId": "1Vh7H4wf-IxEl67idqCBZTQntCbMm1XHB",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 49,
+          "y": 84,
+          "w": 708,
+          "h": 532,
+          "centerX": 403,
+          "centerY": 350
+        },
+        {
+          "x": 773,
+          "y": 83,
+          "w": 352,
+          "h": 535,
+          "centerX": 949,
+          "centerY": 350
+        },
+        {
+          "x": 51,
+          "y": 635,
+          "w": 347,
+          "h": 519,
+          "centerX": 224,
+          "centerY": 894
+        },
+        {
+          "x": 415,
+          "y": 632,
+          "w": 342,
+          "h": 522,
+          "centerX": 586,
+          "centerY": 893
+        },
+        {
+          "x": 776,
+          "y": 634,
+          "w": 352,
+          "h": 520,
+          "centerX": 952,
+          "centerY": 894
+        },
+        {
+          "x": 59,
+          "y": 1173,
+          "w": 311,
+          "h": 165,
+          "centerX": 214,
+          "centerY": 1255
+        },
+        {
+          "x": 415,
+          "y": 1171,
+          "w": 341,
+          "h": 533,
+          "centerX": 585,
+          "centerY": 1437
+        },
+        {
+          "x": 776,
+          "y": 1173,
+          "w": 349,
+          "h": 525,
+          "centerX": 950,
+          "centerY": 1435
+        },
+        {
+          "x": 11,
+          "y": 1322,
+          "w": 380,
+          "h": 412,
+          "centerX": 201,
+          "centerY": 1528
+        }
+      ],
+      "dominantColor": "#c4bfb1"
+    },
+    {
+      "file": "page-065.jpg",
+      "fileId": "15DL0QuEOO_i8-klX_OMuGNLq_W1OqNmh",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 86,
+          "y": 172,
+          "w": 1002,
+          "h": 373,
+          "centerX": 587,
+          "centerY": 358
+        }
+      ],
+      "dominantColor": "#d9cdbf"
+    },
+    {
+      "file": "page-066.jpg",
+      "fileId": "1fd5sXKz8YW5uq11Q3lP0xkidX-YwThI2",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1170,
+          "h": 284,
+          "centerX": 585,
+          "centerY": 142
+        },
+        {
+          "x": 61,
+          "y": 466,
+          "w": 580,
+          "h": 902,
+          "centerX": 351,
+          "centerY": 917
+        },
+        {
+          "x": 671,
+          "y": 499,
+          "w": 426,
+          "h": 512,
+          "centerX": 884,
+          "centerY": 755
+        },
+        {
+          "x": 671,
+          "y": 1050,
+          "w": 425,
+          "h": 590,
+          "centerX": 883,
+          "centerY": 1345
+        }
+      ],
+      "dominantColor": "#bea899"
+    },
+    {
+      "file": "page-067.jpg",
+      "fileId": "12tjRHTVoUbkc-M9ydPr4Uw_-E7rSE5Sw",
+      "width": 1170,
+      "height": 1800,
+      "panels": [
+        {
+          "x": 150,
+          "y": 185,
+          "w": 866,
+          "h": 1325,
+          "centerX": 583,
+          "centerY": 847
+        }
+      ],
+      "dominantColor": "#9ea24a"
+    },
+    {
+      "file": "page-068.jpg",
+      "fileId": "1MymSfu76JOCQBJxaEXY9u6iRFH063hnL",
+      "width": 1170,
+      "height": 1800,
+      "panels": [],
+      "dominantColor": "#a9a697"
+    }
+  ]
+}

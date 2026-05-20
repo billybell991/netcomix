@@ -121,5 +121,5 @@ export function pageUrl(issuePath: string, fileOrPage: string | PageManifest): s
 export function coverUrl(basePath: string, file: string, fileId?: string, r2Url?: string): string {
   if (r2Url) return r2Url;
   if (fileId && isDriveConfigured()) return mediaUrl(fileId);
-  return `${COMICS_BASE}${basePath}/${file}`;
+  return basePath ? `${COMICS_BASE}${basePath}/${file}` : `${COMICS_BASE}${file}`;
 }
