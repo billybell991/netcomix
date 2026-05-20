@@ -1,12 +1,26 @@
 {
-  "generatedAt": "2026-05-19T18:58:32.180980Z",
+  "generatedAt": "2026-05-20T14:54:17.333853+00:00",
   "series": [
+    {
+      "id": "tales-from-the-crypt-v2",
+      "title": "Tales from the Crypt v2",
+      "cover": "page-001.jpg",
+      "issueCount": 1,
+      "path": "tales-from-the-crypt-v2"
+    },
     {
       "id": "tales-from-the-crypt-v2-01-papercutz",
       "title": "Tales from the Crypt v2 01 [Papercutz]",
-      "cover": "tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero/page-001.jpg",
+      "cover": "page-001.jpg",
       "issueCount": 1,
       "path": "tales-from-the-crypt-v2-01-papercutz"
+    },
+    {
+      "id": "issue01",
+      "title": "issue01",
+      "cover": "page-001.jpg",
+      "issueCount": 1,
+      "path": "issue01"
     }
   ]
 }
