@@ -29,7 +29,7 @@ test.describe("NetComix visual journey (watch this)", () => {
     // Open HUD with a center tap and play with settings
     const box = await page.getByTestId("reader").boundingBox();
     if (box) {
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
       await page.waitForTimeout(600);
       await expect(page.getByTestId("hud")).toBeVisible();
 
@@ -59,7 +59,7 @@ test.describe("NetComix visual journey (watch this)", () => {
     // Open HUD, go back to series view, then library
     const finalBox = await page.getByTestId("reader").boundingBox();
     if (finalBox) {
-      await page.mouse.click(finalBox.x + finalBox.width / 2, finalBox.y + finalBox.height / 2);
+      await page.mouse.dblclick(finalBox.x + finalBox.width / 2, finalBox.y + finalBox.height / 2);
       await page.waitForTimeout(600);
       await page.getByTestId("hud-back").click();
       await page.waitForTimeout(700);
