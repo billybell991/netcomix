@@ -202,7 +202,7 @@ export function Reader({ issue, issuePath, onBack }: Props) {
         aria-label="Previous"
         style={{ opacity, background: `rgba(255,255,255,${0.85 * opacity * 4})` }}
         onClick={(e) => { e.stopPropagation(); goPrev(); }}
-      >‹</button>
+      />
       <button
         className={`ghost-btn ${navClass}-right`}
         data-nohud
@@ -210,7 +210,7 @@ export function Reader({ issue, issuePath, onBack }: Props) {
         aria-label="Next"
         style={{ opacity, background: `rgba(255,255,255,${0.85 * opacity * 4})` }}
         onClick={(e) => { e.stopPropagation(); goNext(); }}
-      >›</button>
+      />
 
       {/* Pinpoint dots — rendered in image space, positioned via transform */}
       {pinpointMode && effectiveTransform && pinpoints.map((pt, i) => {

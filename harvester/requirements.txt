@@ -7,3 +7,6 @@ google-auth>=2.34
 # R2 + Postgres output (optional — only needed when migrating / scanning with Railway backend)
 boto3>=1.35
 psycopg2-binary>=2.9
+# v3 YOLO panel detection (harvest_yolo.py)
+ultralytics>=8.3
+huggingface_hub>=1.15

@@ -31,7 +31,7 @@ from harvest_drive import (
 SEVENZIP = next(
     (p for p in (r"C:\Program Files\7-Zip\7z.exe", r"C:\Program Files (x86)\7-Zip\7z.exe")
      if os.path.exists(p)),
-    None,
+    shutil.which("7z"),  # Linux/macOS: p7zip-full provides 7z in PATH
 )
 
 

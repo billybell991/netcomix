@@ -7,10 +7,6 @@ export interface NetComixConfig {
   ghOwner: string;
   ghRepo: string;
   ghToken: string; // Personal Access Token with `workflow` scope
-  /** Railway API base URL, e.g. https://netcomix-api.railway.app */
-  apiUrl: string;
-  /** Shared access code for the Railway API */
-  accessCode: string;
 }
 
 const KEY = "netcomix.config.v1";
@@ -31,22 +27,16 @@ export const EMPTY_CONFIG: NetComixConfig = {
   ghOwner: "",
   ghRepo: "",
   ghToken: "",
-  apiUrl: "",
-  accessCode: "",
 };
 
 /** Defaults visitors get if they've never touched the Setup screen. */
 function defaultConfig(): NetComixConfig {
-  // VITE_API_URL / VITE_ACCESS_CODE are set at build time for Railway deploys.
-  const fromEnv = (import.meta as unknown as { env?: Record<string, string> }).env;
   return {
     driveFolderId: BUILT_IN_DRIVE_FOLDER_ID,
     driveApiKey: BUILT_IN_DRIVE_API_KEY,
     ghOwner: "",
     ghRepo: "",
     ghToken: "",
-    apiUrl: fromEnv?.VITE_API_URL ?? "",
-    accessCode: fromEnv?.VITE_ACCESS_CODE ?? "",
   };
 }
 
@@ -75,11 +65,6 @@ export function saveConfig(cfg: NetComixConfig): void {
 
 export function clearConfig(): void {
   localStorage.removeItem(KEY);
-}
-
-/** Railway API is configured — use it as the primary data source. */
-export function isApiConfigured(cfg: NetComixConfig = getConfig()): boolean {
-  return Boolean(cfg.apiUrl);
 }
 
 /** Drive is configured (read-side: PWA can list/read). */

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { latestScanRun, triggerScan, triggerRedetect, latestRedetectRun, type WorkflowRun } from "../github-actions";
-import { isGithubConfigured, isApiConfigured } from "../config";
-import { apiAdminIssues, apiStageFiles, type AdminIssue } from "../api";
+import { latestScanRun, triggerScan, commitComicToRepo, type WorkflowRun } from "../github-actions";
+import { isGithubConfigured } from "../config";
 
 interface Props {
   onBack: () => void;
@@ -36,26 +35,16 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
   const [run, setRun] = useState<WorkflowRun | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Issues list + re-detect
-  const [adminIssues, setAdminIssues] = useState<AdminIssue[] | null>(null);
-  const [issuesError, setIssuesError] = useState<string | null>(null);
-  const [redetectingId, setRedetectingId] = useState<string | null>(null);
-  const [redetectDoneId, setRedetectDoneId] = useState<string | null>(null);
-  const [redetectErrorId, setRedetectErrorId] = useState<string | null>(null);
-  const [redetectRun, setRedetectRun] = useState<WorkflowRun | null>(null);
-
-  const ghConfigured = isGithubConfigured();
-  const apiReady = isApiConfigured();
-  const isActive = run && (run.status === "queued" || run.status === "in_progress");
-  const elapsed = useElapsed(isActive ? run.created_at : null);
-
-  // Upload state
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadDone, setUploadDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const ghConfigured = isGithubConfigured();
+  const isActive = run && (run.status === "queued" || run.status === "in_progress");
+  const elapsed = useElapsed(isActive ? run.created_at : null);
 
   const onFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
@@ -66,21 +55,21 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
     e.target.value = "";
   };
 
-  const onUploadAndScan = async () => {
+  const onUpload = async () => {
     if (!uploadFiles.length) return;
     setUploading(true);
     setUploadProgress(0);
     setUploadError(null);
     setUploadDone(false);
+    const n = uploadFiles.length;
     try {
-      await apiStageFiles(uploadFiles, setUploadProgress);
+      for (let i = 0; i < n; i++) {
+        await commitComicToRepo(uploadFiles[i], (pct) => setUploadProgress((i + pct) / n));
+      }
       setUploadDone(true);
       setUploadFiles([]);
-      // Auto-trigger the scan so GitHub Actions picks up the staged files
-      if (ghConfigured) {
-        await triggerScan();
-        await refresh();
-      }
+      await triggerScan();
+      await refresh();
     } catch (e) {
       setUploadError(String(e));
     } finally {
@@ -107,51 +96,6 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
     return () => window.clearInterval(t);
   }, []);
 
-  // Load issues list if API is configured
-  useEffect(() => {
-    if (!apiReady) return;
-    apiAdminIssues()
-      .then(setAdminIssues)
-      .catch((e) => setIssuesError(String(e)));
-  }, [apiReady]);
-
-  const onRedetect = async (issueId: string) => {
-    if (redetectingId) return;
-    setRedetectingId(issueId);
-    setRedetectDoneId(null);
-    setRedetectErrorId(null);
-    try {
-      await triggerRedetect(issueId);
-      // Poll until the run appears and completes
-      let attempts = 0;
-      const poll = window.setInterval(async () => {
-        attempts++;
-        const r = await latestRedetectRun().catch(() => null);
-        if (r) setRedetectRun(r);
-        if (r && r.status === "completed") {
-          window.clearInterval(poll);
-          setRedetectingId(null);
-          if (r.conclusion === "success") {
-            setRedetectDoneId(issueId);
-            setTimeout(() => setRedetectDoneId(null), 4000);
-          } else {
-            setRedetectErrorId(issueId);
-            setTimeout(() => setRedetectErrorId(null), 6000);
-          }
-        }
-        if (attempts >= 120) { // 10 min timeout
-          window.clearInterval(poll);
-          setRedetectingId(null);
-        }
-      }, 5000);
-    } catch (e) {
-      setRedetectErrorId(issueId);
-      setRedetectingId(null);
-      setTimeout(() => setRedetectErrorId(null), 6000);
-    }
-  };
-
-
   const statusColor =
     run?.conclusion === "success" ? "#4caf50"
     : run?.conclusion === "failure" ? "#e53935"
@@ -173,8 +117,8 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
         <section style={{ marginBottom: 24 }}>
           <h2 style={{ color: "#ddd" }}>Upload comics</h2>
           <p style={{ color: "#aaa", fontSize: 13 }}>
-            Drop <code>.cbz</code> / <code>.cbr</code> files here. They'll be staged then processed
-            by the GitHub Action automatically.
+            Drop <code>.cbz</code> / <code>.cbr</code> files here. They'll be committed to the
+            repo and processed by the GitHub Action automatically.
           </p>
 
           <input
@@ -186,7 +130,6 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
             onChange={onFilePick}
           />
 
-          {/* Drop zone / pick button */}
           <div
             style={{
               border: "2px dashed #444", borderRadius: 8, padding: "20px 16px",
@@ -212,7 +155,6 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
             Click to pick or drag &amp; drop .cbz / .cbr files
           </div>
 
-          {/* File list */}
           {uploadFiles.length > 0 && (
             <div style={{ marginBottom: 8, display: "flex", flexDirection: "column", gap: 4 }}>
               {uploadFiles.map((f) => (
@@ -230,29 +172,27 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
             </div>
           )}
 
-          {/* Upload progress */}
           {uploading && (
             <div style={{ marginBottom: 8 }}>
               <div style={{ height: 4, background: "#222", borderRadius: 2 }}>
                 <div style={{ height: "100%", width: `${Math.round(uploadProgress * 100)}%`, background: "#1f6feb", borderRadius: 2, transition: "width 0.2s" }} />
               </div>
-              <div style={{ color: "#888", fontSize: 11, marginTop: 4 }}>{Math.round(uploadProgress * 100)}% uploaded</div>
+              <div style={{ color: "#888", fontSize: 11, marginTop: 4 }}>{Math.round(uploadProgress * 100)}% committed</div>
             </div>
           )}
 
           {uploadError && <p style={{ color: "#e53935", fontSize: 13, margin: "6px 0" }}>{uploadError}</p>}
-          {uploadDone && <p style={{ color: "#4caf50", fontSize: 13, margin: "6px 0" }}>✓ Uploaded — scan triggered</p>}
+          {uploadDone && <p style={{ color: "#4caf50", fontSize: 13, margin: "6px 0" }}>✓ Committed — scan triggered</p>}
 
           <button
             className="btn-primary"
-            onClick={onUploadAndScan}
-            disabled={!uploadFiles.length || uploading || !apiReady}
+            onClick={onUpload}
+            disabled={!uploadFiles.length || uploading || !ghConfigured}
             style={{ marginTop: 4 }}
           >
-            {uploading ? "Uploading…" : `Upload${uploadFiles.length > 0 ? ` (${uploadFiles.length})` : ""} & Scan`}
+            {uploading ? "Committing…" : `Upload${uploadFiles.length > 0 ? ` (${uploadFiles.length})` : ""} & Scan`}
           </button>
-          {!apiReady && <p style={{ color: "#888", fontSize: 12, marginTop: 6 }}>Configure API URL in Setup to enable uploads.</p>}
-          {!ghConfigured && apiReady && <p style={{ color: "#888", fontSize: 12, marginTop: 6 }}>⚠ GitHub not configured — files will be staged but scan won't auto-trigger.</p>}
+          {!ghConfigured && <p style={{ color: "#888", fontSize: 12, marginTop: 6 }}>Configure GitHub in Setup to enable uploads.</p>}
         </section>
 
         <section style={{ marginBottom: 24 }}>
@@ -294,61 +234,6 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
               <a href={run.html_url} target="_blank" rel="noreferrer" style={{ color: "#1f6feb", fontSize: 13 }}>
                 View on GitHub →
               </a>
-            </div>
-          )}
-        </section>
-
-        <section style={{ marginBottom: 24 }}>
-          <h2 style={{ color: "#ddd" }}>Re-detect panels</h2>
-          {!apiReady && <p style={{ color: "#666", fontSize: 13 }}>Configure API URL in Setup to see the issue list.</p>}
-          {!ghConfigured && apiReady && <p style={{ color: "#888", fontSize: 13 }}>Configure GitHub in Setup to enable re-detect.</p>}
-          {issuesError && <p style={{ color: "#e53935", fontSize: 13 }}>{issuesError}</p>}
-          {apiReady && !adminIssues && !issuesError && <p style={{ color: "#666", fontSize: 13 }}>Loading…</p>}
-          {adminIssues && adminIssues.length === 0 && <p style={{ color: "#666", fontSize: 13 }}>No issues yet — upload some comics first.</p>}
-          {redetectRun && redetectingId && (
-            <div style={{ background: "#111", border: "1px solid #333", borderRadius: 6, padding: "6px 10px", marginBottom: 8, fontSize: 12, color: "#aaa" }}>
-              Re-detect job: <span style={{ color: redetectRun.status === "completed" && redetectRun.conclusion === "success" ? "#4caf50" : redetectRun.status === "completed" ? "#e53935" : "#ffb300" }}>
-                {redetectRun.status === "completed" ? redetectRun.conclusion : redetectRun.status}
-              </span>
-              {" "}<a href={redetectRun.html_url} target="_blank" rel="noreferrer" style={{ color: "#1f6feb" }}>View →</a>
-            </div>
-          )}
-          {adminIssues && adminIssues.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 400, overflowY: "auto" }}>
-              {adminIssues.map((iss) => {
-                const isRunning = redetectingId === iss.id;
-                const isDone = redetectDoneId === iss.id;
-                const isErr = redetectErrorId === iss.id;
-                return (
-                  <div key={iss.id} style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    background: "#111", borderRadius: 6, padding: "8px 10px",
-                    border: `1px solid ${isDone ? "#4caf5055" : isErr ? "#e5393555" : "#222"}`,
-                    transition: "border-color 0.3s",
-                  }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ color: "#ccc", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {iss.seriesTitle} — {iss.title}
-                      </div>
-                      <div style={{ color: "#555", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{iss.pageCount} pages · {iss.id}</div>
-                    </div>
-                    <button
-                      disabled={!ghConfigured || !!redetectingId}
-                      onClick={() => onRedetect(iss.id)}
-                      style={{
-                        background: isDone ? "rgba(76,175,80,0.2)" : isErr ? "rgba(229,57,53,0.2)" : isRunning ? "rgba(255,179,0,0.15)" : "rgba(31,111,235,0.15)",
-                        border: `1px solid ${isDone ? "#4caf50" : isErr ? "#e53935" : isRunning ? "#ffb300" : "rgba(31,111,235,0.5)"}`,
-                        borderRadius: 5, color: isDone ? "#4caf50" : isErr ? "#e53935" : isRunning ? "#ffb300" : "#60a5fa",
-                        fontSize: 11, padding: "5px 10px", cursor: redetectingId ? "default" : "pointer",
-                        whiteSpace: "nowrap", minWidth: 80, transition: "all 0.2s",
-                      }}
-                    >
-                      {isRunning && <span className="nc-spinner" />}
-                      {isDone ? "✓ Done" : isErr ? "✗ Failed" : isRunning ? "Running…" : "Re-detect"}
-                    </button>
-                  </div>
-                );
-              })}
             </div>
           )}
         </section>

@@ -8,7 +8,7 @@ const ok = (body: unknown) =>
 describe("drive", () => {
   beforeEach(() => {
     localStorage.clear();
-    saveConfig({ driveFolderId: "root", driveApiKey: "TESTKEY", ghOwner: "", ghRepo: "", ghToken: "", apiUrl: "", accessCode: "" });
+    saveConfig({ driveFolderId: "root", driveApiKey: "TESTKEY", ghOwner: "", ghRepo: "", ghToken: "" });
     vi.restoreAllMocks();
   });
 

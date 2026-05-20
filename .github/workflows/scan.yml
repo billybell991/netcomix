@@ -29,14 +29,14 @@ jobs:
       - name: Install Python deps
         run: pip install -r harvester/requirements.txt
 
-      - name: Process staged uploads
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: python harvester/harvest_r2_staging.py
+      - name: Process comics-source archives
+        run: |
+          shopt -s nullglob
+          for f in comics-source/*.cbr comics-source/*.cbz comics-source/*.CBR comics-source/*.CBZ; do
+            echo "Processing: $f"
+            python harvester/harvest_local.py "$f"
+          done
+          echo "Done."
 
       - name: Commit static manifests
         run: |

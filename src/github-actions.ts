@@ -60,6 +60,67 @@ export async function latestScanRun(): Promise<WorkflowRun | null> {
   return data.workflow_runs[0] ?? null;
 }
 
+/**
+ * Commit a CBR/CBZ archive to comics-source/ in the repo via GitHub Contents API.
+ * Requires ghOwner, ghRepo, and ghToken to be configured.
+ */
+export async function commitComicToRepo(
+  file: File,
+  onProgress?: (pct: number) => void,
+): Promise<void> {
+  const { ghOwner, ghRepo } = getConfig();
+
+  // Read and base64-encode via FileReader (handles binary correctly)
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onprogress = (e) => { if (e.lengthComputable) onProgress?.(e.loaded / e.total * 0.35); };
+    reader.onload = () => {
+      onProgress?.(0.4);
+      resolve((reader.result as string).split(',')[1]);
+    };
+    reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+
+  const filePath = `comics-source/${file.name}`;
+
+  // Check if file already exists — need its SHA to update rather than create
+  let sha: string | undefined;
+  const checkRes = await fetch(
+    `${GH_API}/repos/${ghOwner}/${ghRepo}/contents/${filePath}`,
+    { headers: authHeaders() }
+  );
+  if (checkRes.ok) {
+    const existing = (await checkRes.json()) as { sha: string };
+    sha = existing.sha;
+  }
+
+  onProgress?.(0.5);
+
+  const res = await fetch(
+    `${GH_API}/repos/${ghOwner}/${ghRepo}/contents/${filePath}`,
+    {
+      method: 'PUT',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `add comic: ${file.name}`,
+        content: base64,
+        ...(sha ? { sha } : {}),
+      }),
+    }
+  );
+
+  onProgress?.(1.0);
+
+  if (!res.ok) {
+    const body = await res.text();
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(`GitHub auth failed (${res.status}) — token needs Contents: Write access on ${ghOwner}/${ghRepo}.`);
+    }
+    throw new Error(`Commit failed: ${res.status} — ${body.slice(0, 200)}`);
+  }
+}
+
 export async function triggerRedetect(issueId: string): Promise<void> {
   const { ghOwner, ghRepo } = getConfig();
   const res = await fetch(

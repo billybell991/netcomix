@@ -6,9 +6,7 @@ import { SeriesView } from "./components/SeriesView";
 import { Reader } from "./components/Reader";
 import { SetupView } from "./components/SetupView";
 import { AdminView } from "./components/AdminView";
-import { LoginView } from "./components/LoginView";
 import { getFavorites } from "./storage";
-import { isApiConfigured, getConfig } from "./config";
 import "./App.css";
 
 type Route =
@@ -18,13 +16,7 @@ type Route =
   | { name: "setup" }
   | { name: "admin" };
 
-function needsLogin(): boolean {
-  if (!isApiConfigured()) return false;
-  return !getConfig().accessCode;
-}
-
 export function App() {
-  const [loggedIn, setLoggedIn] = useState(() => !needsLogin());
   const [route, setRoute] = useState<Route>({ name: "library" });
   const [library, setLibrary] = useState<Library | null>(null);
   const [seriesIndex, setSeriesIndex] = useState<SeriesIndex | null>(null);
@@ -38,10 +30,7 @@ export function App() {
     setError(null);
     fetchLibrary()
       .then(setLibrary)
-      .catch((e) => {
-        if (String(e).includes("api:unauthorized")) { setLoggedIn(false); return; }
-        setError(String(e));
-      });
+      .catch((e) => setError(String(e)));
   }, [reloadKey]);
 
   useEffect(() => {
@@ -54,10 +43,6 @@ export function App() {
       fetchIssue(route.issue.path, route.issue).then(setIssueData).catch((e) => setError(String(e)));
     }
   }, [route]);
-
-  if (!loggedIn) {
-    return <LoginView onAuthenticated={() => setLoggedIn(true)} />;
-  }
 
   if (route.name === "setup") {
     return (
