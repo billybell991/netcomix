@@ -1,7 +1,4 @@
-// Library fetch helpers — Drive-backed when configured, static /comics/ fallback otherwise.
-
-import { isDriveConfigured } from "./config";
-import { fetchJsonById, mediaUrl } from "./drive";
+// Library fetch helpers — static /comics/ manifest tree served from GitHub Pages.
 import type { IssueIndexEntry, IssueManifest, Library, PageManifest, Panel, SeriesIndex } from "./types";
 
 // ─── Static-mode (kept for local dev / demo fallback) ──────────────────────
@@ -80,26 +77,19 @@ export function applyZoneGrid(manifest: IssueManifest): IssueManifest {
   return { ...manifest, pages };
 }
 
-export async function fetchIssue(issuePath: string, issue?: IssueIndexEntry): Promise<IssueManifest> {
-  if (issue?.issueFileId && isDriveConfigured()) {
-    return applyZoneGrid(await fetchJsonById<IssueManifest>(issue.issueFileId));
-  }
+export async function fetchIssue(issuePath: string, _issue?: IssueIndexEntry): Promise<IssueManifest> {
   return applyZoneGrid(await fetchJson<IssueManifest>(`${COMICS_BASE}${issuePath}/issue.json`));
 }
 
-/** URL for a page image — R2 URL (api-mode), drive media URL, or static path. */
+/** URL for a page image — static path. */
 export function pageUrl(issuePath: string, fileOrPage: string | PageManifest): string {
-  if (typeof fileOrPage !== "string") {
-    if (fileOrPage.url) return fileOrPage.url;
-    if (fileOrPage.fileId && isDriveConfigured()) return mediaUrl(fileOrPage.fileId);
-  }
+  if (typeof fileOrPage !== "string" && fileOrPage.url) return fileOrPage.url;
   const file = typeof fileOrPage === "string" ? fileOrPage : fileOrPage.file;
   return `${COMICS_BASE}${issuePath}/${file}`;
 }
 
-/** URL for a cover thumbnail — R2 URL (api-mode), drive media URL, or static path. */
-export function coverUrl(basePath: string, file: string, fileId?: string, r2Url?: string): string {
+/** URL for a cover thumbnail — static path. */
+export function coverUrl(basePath: string, file: string, _fileId?: string, r2Url?: string): string {
   if (r2Url) return r2Url;
-  if (fileId && isDriveConfigured()) return mediaUrl(fileId);
   return basePath ? `${COMICS_BASE}${basePath}/${file}` : `${COMICS_BASE}${file}`;
 }
