@@ -92,7 +92,10 @@ export async function commitComicToRepo(
   onProgress?.(0.6);
 
   // 3–6: build tree+commit+ref — retry on 422 (not-fast-forward) up to 3 times
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    // Back off between retries so a concurrent CI push can finish
+    if (attempt > 0) await new Promise(r => setTimeout(r, 2000 + attempt * 1000));
+
     // 3. Get current HEAD commit + tree
     const refRes = await fetch(`${base}/git/ref/heads/main`, { headers: authHeaders() });
     if (!refRes.ok) { const b = await refRes.text(); throw new Error(`GitHub ${refRes.status}: ${b.slice(0, 300)}`); }
@@ -131,12 +134,12 @@ export async function commitComicToRepo(
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ sha: newCommitSha }),
     });
-    if (updateRes.status === 422 && attempt < 2) continue; // ref moved; re-read and retry
+    if (updateRes.status === 422 && attempt < 4) continue; // ref moved; re-read and retry
     if (!updateRes.ok) { const b = await updateRes.text(); throw new Error(`GitHub ${updateRes.status}: ${b.slice(0, 300)}`); }
     onProgress?.(1.0);
     return;
   }
-  throw new Error('Failed to push commit after 3 attempts (ref kept moving)');
+  throw new Error('Failed to push commit after 5 attempts (ref kept moving — try again in a minute)');
 }
 
 export async function triggerRedetect(issueId: string): Promise<void> {
