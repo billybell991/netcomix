@@ -114,10 +114,7 @@ export async function commitComicToRepo(
 
   if (!res.ok) {
     const body = await res.text();
-    if (res.status === 401 || res.status === 403) {
-      throw new Error(`GitHub auth failed (${res.status}) — token needs Contents: Write access on ${ghOwner}/${ghRepo}.`);
-    }
-    throw new Error(`Commit failed: ${res.status} — ${body.slice(0, 200)}`);
+    throw new Error(`GitHub ${res.status}: ${body.slice(0, 300)}`);
   }
 }
 
