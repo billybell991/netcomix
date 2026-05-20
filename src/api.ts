@@ -4,11 +4,13 @@ import { getConfig } from "./config";
 import type { IssueManifest, Library, SeriesIndex } from "./types";
 
 function base(): string {
-  return getConfig().apiUrl.replace(/\/+$/, "");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((getConfig() as any).apiUrl ?? "").replace(/\/+$/, "");
 }
 
 function headers(): Record<string, string> {
-  const code = getConfig().accessCode;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const code = (getConfig() as any).accessCode as string | undefined;
   return code ? { Authorization: `Bearer ${code}` } : {};
 }
 
@@ -85,7 +87,8 @@ export async function apiStageFiles(
     for (const f of files) form.append("files", f);
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${base()}/api/admin/stage`);
-    const code = getConfig().accessCode;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const code = (getConfig() as any).accessCode as string | undefined;
     if (code) xhr.setRequestHeader("Authorization", `Bearer ${code}`);
     xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
     xhr.onload = () => {

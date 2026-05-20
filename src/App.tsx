@@ -36,7 +36,7 @@ export function App() {
   useEffect(() => {
     if (route.name === "series") {
       setSeriesIndex(null);
-      fetchSeries(route.series.path, route.series).then(setSeriesIndex).catch((e) => setError(String(e)));
+      fetchSeries(route.series.path).then(setSeriesIndex).catch((e) => setError(String(e)));
     }
     if (route.name === "reader") {
       setIssueData(null);
