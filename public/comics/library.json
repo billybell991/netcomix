@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-05-21T16:02:37.510303+00:00",
+  "generatedAt": "2026-05-21T16:07:53.745844+00:00",
   "series": [
+    {
+      "id": "steam-wars-bounty-hunters",
+      "title": "Steam Wars - Bounty Hunters",
+      "cover": "page-001.jpg",
+      "issueCount": 3,
+      "path": "steam-wars-bounty-hunters"
+    },
     {
       "id": "tales-from-the-crypt-v2",
       "title": "Tales from the Crypt v2",
