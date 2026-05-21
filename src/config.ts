@@ -6,7 +6,6 @@ export interface NetComixConfig {
   ghRepo: string;
   ghToken: string; // Personal Access Token with Contents + Actions write access
 }
-}
 
 const KEY = "netcomix.config.v1";
 

@@ -53,7 +53,7 @@ function fetchJsonp(url: string): Promise<JsonpResult> {
   return new Promise((resolve, reject) => {
     const cbName = `_cv_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const timeout = setTimeout(() => { cleanup(); reject(new Error("timeout")); }, 8000);
-    (window as Record<string, unknown>)[cbName] = (data: JsonpResult) => {
+    (window as unknown as Record<string, unknown>)[cbName] = (data: JsonpResult) => {
       cleanup();
       resolve(data);
     };
@@ -63,7 +63,7 @@ function fetchJsonp(url: string): Promise<JsonpResult> {
     document.head.appendChild(script);
     function cleanup() {
       clearTimeout(timeout);
-      delete (window as Record<string, unknown>)[cbName];
+      delete (window as unknown as Record<string, unknown>)[cbName];
       script.remove();
     }
   });
