@@ -5,7 +5,7 @@ export interface NetComixConfig {
   ghOwner: string;
   ghRepo: string;
   ghToken: string; // Personal Access Token with Contents + Actions write access
-  comicVineKey: string;
+}
 }
 
 const KEY = "netcomix.config.v1";
@@ -14,7 +14,6 @@ export const EMPTY_CONFIG: NetComixConfig = {
   ghOwner: "",
   ghRepo: "",
   ghToken: "",
-  comicVineKey: "5e7b65578da0df8113f9e2c75daf6ec8705fcb7b",
 };
 
 export function getConfig(): NetComixConfig {

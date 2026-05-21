@@ -159,6 +159,52 @@ app.post("/api/admin/migrate", async (c) => {
 // ─── Health ───────────────────────────────────────────────────────────────────
 app.get("/health", (c) => c.json({ ok: true }));
 
+// ─── Comic Vine proxy (avoids browser CORS restriction) ───────────────────────
+const CV_KEY = process.env.COMIC_VINE_KEY ?? "5e7b65578da0df8113f9e2c75daf6ec8705fcb7b";
+
+function cvRelevance(query: string, title: string): number {
+  const words = query.toLowerCase().split(/\W+/).filter((w) => w.length > 3);
+  if (!words.length) return 0;
+  const t = title.toLowerCase();
+  return words.filter((w) => t.includes(w)).length / words.length;
+}
+
+function cvStripHtml(html: string): string {
+  return (html ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+app.get("/api/comicvine", async (c) => {
+  const q = c.req.query("q")?.trim() ?? "";
+  if (!q || !CV_KEY) return c.json({ blurb: null });
+  try {
+    const url = new URL("https://comicvine.gamespot.com/api/volumes/");
+    url.searchParams.set("api_key", CV_KEY);
+    url.searchParams.set("format", "json");
+    url.searchParams.set("filter", `name:${q}`);
+    url.searchParams.set("field_list", "id,name,deck,description,count_of_issues");
+    url.searchParams.set("limit", "10");
+    const res = await fetch(url.toString());
+    if (!res.ok) return c.json({ blurb: null });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (await res.json()) as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const results: any[] = data.results ?? [];
+    const scored = results
+      .map((r) => ({ r, score: cvRelevance(q, r.name ?? "") }))
+      .filter((s) => s.score >= 0.5)
+      .sort((a, b) => b.score - a.score || (b.r.count_of_issues ?? 0) - (a.r.count_of_issues ?? 0));
+    for (const { r } of scored) {
+      const text: string = r.deck || cvStripHtml(r.description ?? "");
+      if (text) return c.json({ blurb: text });
+    }
+    return c.json({ blurb: null });
+  } catch (e) {
+    console.error("GET /api/comicvine", e);
+    return c.json({ blurb: null });
+  }
+});
+
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 serve({ fetch: app.fetch, port: PORT }, () => {
   console.log(`✓ NetComix API listening on port ${PORT}`);

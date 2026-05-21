@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
+import { getConfig } from "../config";
 
 export interface PreviewItem {
   title: string;
   coverSrc: string;
   meta: string;
-  /** Query sent to Wikipedia — used for series-level cards */
+  /** Query sent to Wikipedia — used for series-level cards when no server is configured */
   wikiQuery: string;
-  /** When set, Comic Vine is used instead of Wikipedia */
-  comicVineKey?: string;
-  /** Series title used as context for the Comic Vine search */
+  /** When set, Comic Vine volume lookup is attempted via the server proxy first */
   seriesTitle?: string;
 }
 
@@ -74,33 +73,24 @@ function stripHtml(html: string): string {
   return (html ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-async function fetchComicVineBlurb(
-  issueTitle: string,
-  seriesTitle: string,
-  apiKey: string
-): Promise<string | null> {
+/** Call the server-side Comic Vine proxy to get a volume blurb (avoids CORS). */
+async function fetchComicVineViaProxy(seriesTitle: string): Promise<string | null> {
   try {
-    const query = `${seriesTitle} ${issueTitle}`.trim();
-    const url = new URL("https://comicvine.gamespot.com/api/search/");
-    url.searchParams.set("api_key", apiKey);
-    url.searchParams.set("format", "json");
-    url.searchParams.set("resources", "issue");
-    url.searchParams.set("query", query);
-    url.searchParams.set("field_list", "id,name,deck,description,volume");
-    url.searchParams.set("limit", "5");
-
-    const res = await fetch(url.toString());
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cfg = getConfig() as any;
+    const apiUrl: string = (cfg.apiUrl ?? "").replace(/\/+$/, "");
+    if (!apiUrl) return null;
+    const accessCode: string = cfg.accessCode ?? "";
+    const headers: Record<string, string> = accessCode
+      ? { Authorization: `Bearer ${accessCode}` }
+      : {};
+    const res = await fetch(
+      `${apiUrl}/api/comicvine?q=${encodeURIComponent(seriesTitle)}`,
+      { headers }
+    );
     if (!res.ok) return null;
     const data = await res.json();
-    if (data.status_code !== 1) return null;
-
-    for (const result of (data.results as CVIssue[])) {
-      const volName = result.volume?.name ?? "";
-      if (titleRelevance(seriesTitle, volName) < 0.4) continue;
-      if (result.deck) return result.deck;
-      if (result.description) return stripHtml(result.description).slice(0, 500);
-    }
-    return null;
+    return (data as { blurb: string | null }).blurb;
   } catch {
     return null;
   }
@@ -123,14 +113,18 @@ export function CardPreview({ item, onOpen, onClose }: Props) {
     }
     setLoading(true);
     setSummary(null);
-    const fetcher =
-      item.comicVineKey && item.seriesTitle
-        ? fetchComicVineBlurb(item.title, item.seriesTitle, item.comicVineKey)
-        : fetchWikiSummary(item.wikiQuery);
-    fetcher.then((text) => {
-      setSummary(text);
+    const load = async () => {
+      // Issue card: try Comic Vine proxy first, then fall back to Wikipedia
+      if (item.seriesTitle) {
+        const cvBlurb = await fetchComicVineViaProxy(item.seriesTitle);
+        if (cvBlurb) { setSummary(cvBlurb); setLoading(false); return; }
+      }
+      // Series card (or CV miss): use Wikipedia
+      const wikiBlurb = await fetchWikiSummary(item.wikiQuery);
+      setSummary(wikiBlurb);
       setLoading(false);
-    });
+    };
+    load();
   }, [item]);
 
   if (!item) return null;
