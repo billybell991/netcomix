@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { Library, SeriesEntry } from "../types";
 import { coverUrl } from "../library";
 import { toggleFavorite } from "../storage";
+import { CardPreview } from "./CardPreview";
+import type { PreviewItem } from "./CardPreview";
 
 interface Props {
   library: Library | null;
@@ -97,41 +99,59 @@ function Grid({
   onSelectSeries: (s: SeriesEntry) => void;
   onFavoritesChanged: (favs: string[]) => void;
 }) {
+  const [preview, setPreview] = useState<SeriesEntry | null>(null);
+
+  const previewItem: PreviewItem | null = preview
+    ? {
+        title: preview.title,
+        coverSrc: coverUrl(preview.path, preview.cover, preview.coverFileId, preview.coverUrl),
+        meta: `${preview.issueCount} issue${preview.issueCount === 1 ? "" : "s"}`,
+        wikiQuery: preview.title,
+      }
+    : null;
+
   return (
-    <div className="grid" role="list">
-      {items.map((s) => {
-        const fav = favorites.has(s.id);
-        return (
-          <div
-            key={s.id}
-            className="card"
-            role="listitem"
-            data-testid={`series-card-${s.id}`}
-            onClick={() => onSelectSeries(s)}
-          >
-            <img
-              className="card-cover"
-              src={coverUrl(s.path, s.cover, s.coverFileId, s.coverUrl)}
-              alt={s.title}
-              loading="lazy"
-            />
-            <button
-              className={`card-fav ${fav ? "on" : ""}`}
-              aria-label={fav ? "Unfavorite" : "Favorite"}
-              onClick={(e) => {
-                e.stopPropagation();
-                const next = toggleFavorite(s.id);
-                onFavoritesChanged(next);
-              }}
+    <>
+      <div className="grid" role="list">
+        {items.map((s) => {
+          const fav = favorites.has(s.id);
+          return (
+            <div
+              key={s.id}
+              className="card"
+              role="listitem"
+              data-testid={`series-card-${s.id}`}
+              onClick={() => setPreview(s)}
             >
-              {fav ? "★" : "☆"}
-            </button>
-            <div className="card-title" title={s.title}>{s.title}</div>
-            <div className="card-meta">{s.issueCount} issue{s.issueCount === 1 ? "" : "s"}</div>
-          </div>
-        );
-      })}
-    </div>
+              <img
+                className="card-cover"
+                src={coverUrl(s.path, s.cover, s.coverFileId, s.coverUrl)}
+                alt={s.title}
+                loading="lazy"
+              />
+              <button
+                className={`card-fav ${fav ? "on" : ""}`}
+                aria-label={fav ? "Unfavorite" : "Favorite"}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const next = toggleFavorite(s.id);
+                  onFavoritesChanged(next);
+                }}
+              >
+                {fav ? "★" : "☆"}
+              </button>
+              <div className="card-title" title={s.title}>{s.title}</div>
+              <div className="card-meta">{s.issueCount} issue{s.issueCount === 1 ? "" : "s"}</div>
+            </div>
+          );
+        })}
+      </div>
+      <CardPreview
+        item={previewItem}
+        onOpen={() => { onSelectSeries(preview!); setPreview(null); }}
+        onClose={() => setPreview(null)}
+      />
+    </>
   );
 }
 

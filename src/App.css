@@ -135,6 +135,109 @@
 }
 .card-fav.on { color: #e50914; }
 
+/* ─── Card Preview Sheet ─────────────────────────────────────────────────── */
+.preview-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 199;
+  animation: previewFadeIn 0.2s ease;
+}
+.preview-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 52vh;
+  background: #1c1c1e;
+  border-radius: 16px 16px 0 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  animation: previewSlideUp 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow: hidden;
+}
+.preview-drag-handle {
+  width: 36px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  margin: 10px auto 6px;
+  flex-shrink: 0;
+}
+.preview-inner {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.preview-top {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.preview-cover {
+  width: 80px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: #333;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+.preview-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 2px;
+}
+.preview-title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #fff;
+}
+.preview-meta {
+  font-size: 12px;
+  color: #888;
+}
+.preview-open-btn {
+  margin-top: 8px;
+  align-self: flex-start;
+  background: #e50914;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+.preview-open-btn:active { background: #b5070f; }
+.preview-blurb {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.65;
+  margin: 0;
+}
+.preview-blurb--loading {
+  color: #555;
+  font-style: italic;
+}
+@keyframes previewFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes previewSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0);    }
+}
+
 .search-bar {
   display: block;
   width: 100%;

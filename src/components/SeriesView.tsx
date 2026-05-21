@@ -1,4 +1,7 @@
+import { useState } from "react";
 import type { IssueIndexEntry, SeriesEntry, SeriesIndex } from "../types";
+import { CardPreview } from "./CardPreview";
+import type { PreviewItem } from "./CardPreview";
 
 interface Props {
   series: SeriesEntry;
@@ -9,6 +12,17 @@ interface Props {
 }
 
 export function SeriesView({ series, index, onBack, onSelectIssue, coverUrl }: Props) {
+  const [preview, setPreview] = useState<IssueIndexEntry | null>(null);
+
+  const previewItem: PreviewItem | null = preview
+    ? {
+        title: preview.title,
+        coverSrc: coverUrl(`${preview.path}/${preview.cover}`, preview.coverFileId, preview.coverUrl),
+        meta: `${preview.pageCount} pages`,
+        wikiQuery: series.title,
+      }
+    : null;
+
   return (
     <div className="shell" data-testid="series-view">
       <div className="shell-header">
@@ -30,7 +44,7 @@ export function SeriesView({ series, index, onBack, onSelectIssue, coverUrl }: P
                 className="card"
                 role="listitem"
                 data-testid={`issue-card-${issue.id}`}
-                onClick={() => onSelectIssue(issue)}
+                onClick={() => setPreview(issue)}
               >
                 <img
                   className="card-cover"
@@ -45,6 +59,11 @@ export function SeriesView({ series, index, onBack, onSelectIssue, coverUrl }: P
           </div>
         )}
       </div>
+      <CardPreview
+        item={previewItem}
+        onOpen={() => { onSelectIssue(preview!); setPreview(null); }}
+        onClose={() => setPreview(null)}
+      />
     </div>
   );
 }
