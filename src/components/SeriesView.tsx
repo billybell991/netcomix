@@ -38,7 +38,7 @@ export function SeriesView({ series, index, onBack, onSelectIssue, coverUrl }: P
                   alt={issue.title}
                   loading="lazy"
                 />
-                <div className="card-title">{issue.title}</div>
+                <div className="card-title" title={issue.title}>{issue.title}</div>
                 <div className="card-meta">{issue.pageCount} pages</div>
               </div>
             ))}

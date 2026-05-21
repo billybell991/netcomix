@@ -126,7 +126,7 @@ function Grid({
             >
               {fav ? "★" : "☆"}
             </button>
-            <div className="card-title">{s.title}</div>
+            <div className="card-title" title={s.title}>{s.title}</div>
             <div className="card-meta">{s.issueCount} issue{s.issueCount === 1 ? "" : "s"}</div>
           </div>
         );
