@@ -105,6 +105,8 @@ async function fetchWikiSummary(query: string): Promise<string | null> {
   const MIN_RELEVANCE = 0.5;
   try {
     const slug = encodeURIComponent(q.replace(/\s+/g, "_"));
+
+    // Try direct slug
     const directRes = await fetch(
       `https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`
     );
@@ -117,15 +119,31 @@ async function fetchWikiSummary(query: string): Promise<string | null> {
       ) {
         return data.extract as string;
       }
+      // Disambiguation → try the _(comics) variant directly
+      if (data.type === "disambiguation") {
+        const comicsRes = await fetch(
+          `https://en.wikipedia.org/api/rest_v1/page/summary/${slug}_(comics)`
+        );
+        if (comicsRes.ok) {
+          const comicsData = await comicsRes.json();
+          if (comicsData.type !== "disambiguation" && comicsData.extract) {
+            return comicsData.extract as string;
+          }
+        }
+      }
     }
 
+    // Search fallback — prefer hits with "comic" in the title
     const searchRes = await fetch(
-      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q + " comic book")}&format=json&origin=*&srlimit=3`
+      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q + " comic book")}&format=json&origin=*&srlimit=5`
     );
     if (searchRes.ok) {
       const searchData = await searchRes.json();
       const hits: { title: string }[] = searchData?.query?.search ?? [];
-      for (const hit of hits) {
+      const sorted = [...hits].sort((a, b) =>
+        (/comic/i.test(b.title) ? 1 : 0) - (/comic/i.test(a.title) ? 1 : 0)
+      );
+      for (const hit of sorted) {
         if (titleRelevance(q, hit.title) < MIN_RELEVANCE) continue;
         const sumRes = await fetch(
           `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(hit.title.replace(/\s+/g, "_"))}`
