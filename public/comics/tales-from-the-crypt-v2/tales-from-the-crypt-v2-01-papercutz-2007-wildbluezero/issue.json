@@ -16,27 +16,7 @@
       "width": 1294,
       "height": 2010,
       "panels": [],
-      "dominantColor": "#76362a",
-      "zone_text_centers": [
-        null,
-        null,
-        {
-          "cx": 646,
-          "cy": 847
-        },
-        {
-          "cx": 924,
-          "cy": 1110
-        },
-        {
-          "cx": 630,
-          "cy": 1841
-        },
-        {
-          "cx": 783,
-          "cy": 1602
-        }
-      ]
+      "dominantColor": "#76362a"
     },
     {
       "file": "page-003.jpg",
@@ -84,27 +64,7 @@
           "centerY": 1605
         }
       ],
-      "dominantColor": "#746e69",
-      "zone_text_centers": [
-        {
-          "cx": 290,
-          "cy": 597
-        },
-        {
-          "cx": 1076,
-          "cy": 583
-        },
-        null,
-        {
-          "cx": 859,
-          "cy": 785
-        },
-        {
-          "cx": 419,
-          "cy": 1343
-        },
-        null
-      ]
+      "dominantColor": "#746e69"
     },
     {
       "file": "page-004.jpg",
@@ -136,33 +96,7 @@
           "centerY": 1638
         }
       ],
-      "dominantColor": "#94917a",
-      "zone_text_centers": [
-        {
-          "cx": 571,
-          "cy": 308
-        },
-        {
-          "cx": 1105,
-          "cy": 193
-        },
-        {
-          "cx": 151,
-          "cy": 811
-        },
-        {
-          "cx": 669,
-          "cy": 1059
-        },
-        {
-          "cx": 334,
-          "cy": 1587
-        },
-        {
-          "cx": 765,
-          "cy": 1828
-        }
-      ]
+      "dominantColor": "#94917a"
     },
     {
       "file": "page-005.jpg",
@@ -202,30 +136,7 @@
           "centerY": 1506
         }
       ],
-      "dominantColor": "#918379",
-      "zone_text_centers": [
-        {
-          "cx": 320,
-          "cy": 124
-        },
-        {
-          "cx": 998,
-          "cy": 228
-        },
-        {
-          "cx": 378,
-          "cy": 1118
-        },
-        {
-          "cx": 716,
-          "cy": 1306
-        },
-        {
-          "cx": 255,
-          "cy": 1761
-        },
-        null
-      ]
+      "dominantColor": "#918379"
     },
     {
       "file": "page-006.jpg",
@@ -273,27 +184,7 @@
           "centerY": 1535
         }
       ],
-      "dominantColor": "#82725f",
-      "zone_text_centers": [
-        {
-          "cx": 626,
-          "cy": 133
-        },
-        {
-          "cx": 1048,
-          "cy": 128
-        },
-        {
-          "cx": 274,
-          "cy": 1220
-        },
-        {
-          "cx": 863,
-          "cy": 1013
-        },
-        null,
-        null
-      ]
+      "dominantColor": "#82725f"
     },
     {
       "file": "page-007.jpg",
@@ -325,27 +216,7 @@
           "centerY": 1574
         }
       ],
-      "dominantColor": "#727e68",
-      "zone_text_centers": [
-        {
-          "cx": 331,
-          "cy": 420
-        },
-        {
-          "cx": 867,
-          "cy": 201
-        },
-        {
-          "cx": 330,
-          "cy": 841
-        },
-        null,
-        {
-          "cx": 464,
-          "cy": 1470
-        },
-        null
-      ]
+      "dominantColor": "#727e68"
     },
     {
       "file": "page-008.jpg",
@@ -393,45 +264,14 @@
           "centerY": 1393
         }
       ],
-      "dominantColor": "#978764",
-      "zone_text_centers": [
-        {
-          "cx": 264,
-          "cy": 234
-        },
-        {
-          "cx": 937,
-          "cy": 632
-        },
-        {
-          "cx": 248,
-          "cy": 942
-        },
-        null,
-        null,
-        null
-      ]
+      "dominantColor": "#978764"
     },
     {
       "file": "page-009.jpg",
       "width": 1291,
       "height": 2010,
       "panels": [],
-      "dominantColor": "#7f806f",
-      "zone_text_centers": [
-        null,
-        null,
-        {
-          "cx": 236,
-          "cy": 1174
-        },
-        null,
-        null,
-        {
-          "cx": 702,
-          "cy": 1785
-        }
-      ]
+      "dominantColor": "#7f806f"
     },
     {
       "file": "page-010.jpg",
@@ -471,30 +311,7 @@
           "centerY": 1499
         }
       ],
-      "dominantColor": "#a4988d",
-      "zone_text_centers": [
-        {
-          "cx": 340,
-          "cy": 296
-        },
-        {
-          "cx": 833,
-          "cy": 282
-        },
-        {
-          "cx": 367,
-          "cy": 1162
-        },
-        {
-          "cx": 816,
-          "cy": 1064
-        },
-        {
-          "cx": 534,
-          "cy": 1634
-        },
-        null
-      ]
+      "dominantColor": "#a4988d"
     },
     {
       "file": "page-011.jpg",
@@ -518,27 +335,7 @@
           "centerY": 996
         }
       ],
-      "dominantColor": "#9c9183",
-      "zone_text_centers": [
-        {
-          "cx": 466,
-          "cy": 230
-        },
-        {
-          "cx": 1041,
-          "cy": 234
-        },
-        {
-          "cx": 373,
-          "cy": 1020
-        },
-        {
-          "cx": 799,
-          "cy": 1085
-        },
-        null,
-        null
-      ]
+      "dominantColor": "#9c9183"
     },
     {
       "file": "page-012.jpg",
@@ -570,33 +367,7 @@
           "centerY": 1643
         }
       ],
-      "dominantColor": "#a39286",
-      "zone_text_centers": [
-        {
-          "cx": 276,
-          "cy": 187
-        },
-        {
-          "cx": 719,
-          "cy": 197
-        },
-        {
-          "cx": 424,
-          "cy": 796
-        },
-        {
-          "cx": 699,
-          "cy": 821
-        },
-        {
-          "cx": 639,
-          "cy": 1408
-        },
-        {
-          "cx": 1096,
-          "cy": 1495
-        }
-      ]
+      "dominantColor": "#a39286"
     },
     {
       "file": "page-013.jpg",
@@ -660,27 +431,7 @@
           "centerY": 1648
         }
       ],
-      "dominantColor": "#aeabb0",
-      "zone_text_centers": [
-        null,
-        {
-          "cx": 752,
-          "cy": 274
-        },
-        {
-          "cx": 496,
-          "cy": 842
-        },
-        null,
-        {
-          "cx": 339,
-          "cy": 1537
-        },
-        {
-          "cx": 770,
-          "cy": 1452
-        }
-      ]
+      "dominantColor": "#aeabb0"
     },
     {
       "file": "page-014.jpg",
@@ -744,33 +495,7 @@
           "centerY": 1650
         }
       ],
-      "dominantColor": "#b1b1b5",
-      "zone_text_centers": [
-        {
-          "cx": 347,
-          "cy": 282
-        },
-        {
-          "cx": 699,
-          "cy": 108
-        },
-        {
-          "cx": 373,
-          "cy": 880
-        },
-        {
-          "cx": 716,
-          "cy": 771
-        },
-        {
-          "cx": 299,
-          "cy": 1591
-        },
-        {
-          "cx": 675,
-          "cy": 1418
-        }
-      ]
+      "dominantColor": "#b1b1b5"
     },
     {
       "file": "page-015.jpg",
@@ -834,33 +559,7 @@
           "centerY": 1763
         }
       ],
-      "dominantColor": "#8e8072",
-      "zone_text_centers": [
-        {
-          "cx": 242,
-          "cy": 96
-        },
-        {
-          "cx": 874,
-          "cy": 185
-        },
-        {
-          "cx": 324,
-          "cy": 944
-        },
-        {
-          "cx": 1020,
-          "cy": 970
-        },
-        {
-          "cx": 224,
-          "cy": 1841
-        },
-        {
-          "cx": 1048,
-          "cy": 1875
-        }
-      ]
+      "dominantColor": "#8e8072"
     },
     {
       "file": "page-016.jpg",
@@ -900,27 +599,7 @@
           "centerY": 1447
         }
       ],
-      "dominantColor": "#6c6b58",
-      "zone_text_centers": [
-        {
-          "cx": 255,
-          "cy": 229
-        },
-        {
-          "cx": 864,
-          "cy": 336
-        },
-        {
-          "cx": 306,
-          "cy": 979
-        },
-        null,
-        {
-          "cx": 369,
-          "cy": 1544
-        },
-        null
-      ]
+      "dominantColor": "#6c6b58"
     },
     {
       "file": "page-017.jpg",
@@ -960,27 +639,7 @@
           "centerY": 1362
         }
       ],
-      "dominantColor": "#8e8270",
-      "zone_text_centers": [
-        {
-          "cx": 406,
-          "cy": 140
-        },
-        null,
-        {
-          "cx": 339,
-          "cy": 989
-        },
-        {
-          "cx": 764,
-          "cy": 970
-        },
-        null,
-        {
-          "cx": 840,
-          "cy": 1753
-        }
-      ]
+      "dominantColor": "#8e8270"
     },
     {
       "file": "page-018.jpg",
@@ -1028,30 +687,7 @@
           "centerY": 1351
         }
       ],
-      "dominantColor": "#766756",
-      "zone_text_centers": [
-        {
-          "cx": 306,
-          "cy": 96
-        },
-        {
-          "cx": 1023,
-          "cy": 89
-        },
-        {
-          "cx": 250,
-          "cy": 971
-        },
-        {
-          "cx": 756,
-          "cy": 881
-        },
-        null,
-        {
-          "cx": 1049,
-          "cy": 1437
-        }
-      ]
+      "dominantColor": "#766756"
     },
     {
       "file": "page-019.jpg",
@@ -1091,36 +727,14 @@
           "centerY": 1312
         }
       ],
-      "dominantColor": "#7d7666",
-      "zone_text_centers": [
-        {
-          "cx": 491,
-          "cy": 155
-        },
-        {
-          "cx": 816,
-          "cy": 148
-        },
-        null,
-        null,
-        null,
-        null
-      ]
+      "dominantColor": "#7d7666"
     },
     {
       "file": "page-020.jpg",
       "width": 1287,
       "height": 2010,
       "panels": [],
-      "dominantColor": "#716c5a",
-      "zone_text_centers": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
-      ]
+      "dominantColor": "#716c5a"
     },
     {
       "file": "page-021.jpg",
@@ -1152,24 +766,7 @@
           "centerY": 1617
         }
       ],
-      "dominantColor": "#878575",
-      "zone_text_centers": [
-        {
-          "cx": 397,
-          "cy": 100
-        },
-        null,
-        {
-          "cx": 338,
-          "cy": 1028
-        },
-        null,
-        null,
-        {
-          "cx": 682,
-          "cy": 1654
-        }
-      ]
+      "dominantColor": "#878575"
     },
     {
       "file": "page-022.jpg",
@@ -1201,33 +798,7 @@
           "centerY": 1618
         }
       ],
-      "dominantColor": "#958771",
-      "zone_text_centers": [
-        {
-          "cx": 182,
-          "cy": 333
-        },
-        {
-          "cx": 880,
-          "cy": 97
-        },
-        {
-          "cx": 292,
-          "cy": 837
-        },
-        {
-          "cx": 988,
-          "cy": 1077
-        },
-        {
-          "cx": 297,
-          "cy": 1438
-        },
-        {
-          "cx": 999,
-          "cy": 1454
-        }
-      ]
+      "dominantColor": "#958771"
     },
     {
       "file": "page-023.jpg",
@@ -1251,27 +822,7 @@
           "centerY": 999
         }
       ],
-      "dominantColor": "#7c7867",
-      "zone_text_centers": [
-        {
-          "cx": 304,
-          "cy": 292
-        },
-        {
-          "cx": 954,
-          "cy": 274
-        },
-        null,
-        {
-          "cx": 1198,
-          "cy": 1199
-        },
-        null,
-        {
-          "cx": 641,
-          "cy": 1892
-        }
-      ]
+      "dominantColor": "#7c7867"
     },
     {
       "file": "page-024.jpg",
@@ -1327,27 +878,7 @@
           "centerY": 1614
         }
       ],
-      "dominantColor": "#827e7a",
-      "zone_text_centers": [
-        null,
-        {
-          "cx": 967,
-          "cy": 145
-        },
-        {
-          "cx": 280,
-          "cy": 800
-        },
-        {
-          "cx": 769,
-          "cy": 772
-        },
-        null,
-        {
-          "cx": 696,
-          "cy": 1400
-        }
-      ]
+      "dominantColor": "#827e7a"
     },
     {
       "file": "page-025.jpg",
@@ -1379,24 +910,7 @@
           "centerY": 1719
         }
       ],
-      "dominantColor": "#73716a",
-      "zone_text_centers": [
-        null,
-        {
-          "cx": 933,
-          "cy": 149
-        },
-        {
-          "cx": 477,
-          "cy": 776
-        },
-        null,
-        null,
-        {
-          "cx": 1083,
-          "cy": 1511
-        }
-      ]
+      "dominantColor": "#73716a"
     },
     {
       "file": "page-026.jpg",
@@ -1468,24 +982,7 @@
           "centerY": 1581
         }
       ],
-      "dominantColor": "#716f63",
-      "zone_text_centers": [
-        {
-          "cx": 372,
-          "cy": 358
-        },
-        null,
-        {
-          "cx": 562,
-          "cy": 1317
-        },
-        null,
-        {
-          "cx": 504,
-          "cy": 1894
-        },
-        null
-      ]
+      "dominantColor": "#716f63"
     },
     {
       "file": "page-027.jpg",
@@ -1533,27 +1030,7 @@
           "centerY": 1452
         }
       ],
-      "dominantColor": "#b3a59b",
-      "zone_text_centers": [
-        {
-          "cx": 352,
-          "cy": 204
-        },
-        {
-          "cx": 971,
-          "cy": 241
-        },
-        {
-          "cx": 398,
-          "cy": 1085
-        },
-        null,
-        {
-          "cx": 634,
-          "cy": 1669
-        },
-        null
-      ]
+      "dominantColor": "#b3a59b"
     },
     {
       "file": "page-028.jpg",
@@ -1601,30 +1078,7 @@
           "centerY": 1598
         }
       ],
-      "dominantColor": "#a4a6a6",
-      "zone_text_centers": [
-        {
-          "cx": 293,
-          "cy": 208
-        },
-        {
-          "cx": 903,
-          "cy": 155
-        },
-        {
-          "cx": 325,
-          "cy": 802
-        },
-        {
-          "cx": 776,
-          "cy": 1083
-        },
-        null,
-        {
-          "cx": 764,
-          "cy": 1429
-        }
-      ]
+      "dominantColor": "#a4a6a6"
     },
     {
       "file": "page-029.jpg",
@@ -1664,27 +1118,7 @@
           "centerY": 1692
         }
       ],
-      "dominantColor": "#888685",
-      "zone_text_centers": [
-        null,
-        {
-          "cx": 934,
-          "cy": 191
-        },
-        {
-          "cx": 319,
-          "cy": 1039
-        },
-        {
-          "cx": 1054,
-          "cy": 1316
-        },
-        null,
-        {
-          "cx": 868,
-          "cy": 1513
-        }
-      ]
+      "dominantColor": "#888685"
     },
     {
       "file": "page-030.jpg",
@@ -1716,27 +1150,7 @@
           "centerY": 1649
         }
       ],
-      "dominantColor": "#8e8b87",
-      "zone_text_centers": [
-        null,
-        {
-          "cx": 683,
-          "cy": 395
-        },
-        null,
-        {
-          "cx": 926,
-          "cy": 821
-        },
-        {
-          "cx": 333,
-          "cy": 1415
-        },
-        {
-          "cx": 1001,
-          "cy": 1413
-        }
-      ]
+      "dominantColor": "#8e8b87"
     },
     {
       "file": "page-031.jpg",
@@ -1760,24 +1174,7 @@
           "centerY": 1594
         }
       ],
-      "dominantColor": "#938281",
-      "zone_text_centers": [
-        {
-          "cx": 274,
-          "cy": 319
-        },
-        null,
-        {
-          "cx": 350,
-          "cy": 1140
-        },
-        {
-          "cx": 768,
-          "cy": 1160
-        },
-        null,
-        null
-      ]
+      "dominantColor": "#938281"
     },
     {
       "file": "page-032.jpg",
@@ -1801,27 +1198,7 @@
           "centerY": 977
         }
       ],
-      "dominantColor": "#8c7b74",
-      "zone_text_centers": [
-        {
-          "cx": 321,
-          "cy": 309
-        },
-        {
-          "cx": 1034,
-          "cy": 516
-        },
-        {
-          "cx": 270,
-          "cy": 1054
-        },
-        {
-          "cx": 879,
-          "cy": 1152
-        },
-        null,
-        null
-      ]
+      "dominantColor": "#8c7b74"
     },
     {
       "file": "page-033.jpg",
@@ -1877,33 +1254,7 @@
           "centerY": 1590
         }
       ],
-      "dominantColor": "#615b5a",
-      "zone_text_centers": [
-        {
-          "cx": 340,
-          "cy": 364
-        },
-        {
-          "cx": 717,
-          "cy": 100
-        },
-        {
-          "cx": 305,
-          "cy": 1081
-        },
-        {
-          "cx": 894,
-          "cy": 744
-        },
-        {
-          "cx": 320,
-          "cy": 1359
-        },
-        {
-          "cx": 892,
-          "cy": 1416
-        }
-      ]
+      "dominantColor": "#615b5a"
     },
     {
       "file": "page-034.jpg",
@@ -1959,27 +1310,7 @@
           "centerY": 1616
         }
       ],
-      "dominantColor": "#a9a8a4",
-      "zone_text_centers": [
-        {
-          "cx": 302,
-          "cy": 155
-        },
-        {
-          "cx": 1037,
-          "cy": 195
-        },
-        {
-          "cx": 346,
-          "cy": 1214
-        },
-        {
-          "cx": 909,
-          "cy": 1087
-        },
-        null,
-        null
-      ]
+      "dominantColor": "#a9a8a4"
     },
     {
       "file": "page-035.jpg",
@@ -2043,27 +1374,7 @@
           "centerY": 1593
         }
       ],
-      "dominantColor": "#5c5753",
-      "zone_text_centers": [
-        {
-          "cx": 306,
-          "cy": 242
-        },
-        {
-          "cx": 866,
-          "cy": 233
-        },
-        {
-          "cx": 329,
-          "cy": 1129
-        },
-        {
-          "cx": 863,
-          "cy": 1036
-        },
-        null,
-        null
-      ]
+      "dominantColor": "#5c5753"
     },
     {
       "file": "page-036.jpg",
@@ -2103,27 +1414,7 @@
           "centerY": 1337
         }
       ],
-      "dominantColor": "#8f8990",
-      "zone_text_centers": [
-        {
-          "cx": 485,
-          "cy": 235
-        },
-        {
-          "cx": 859,
-          "cy": 272
-        },
-        {
-          "cx": 325,
-          "cy": 1244
-        },
-        {
-          "cx": 850,
-          "cy": 741
-        },
-        null,
-        null
-      ]
+      "dominantColor": "#8f8990"
     },
     {
       "file": "page-037.jpg",
@@ -2147,24 +1438,7 @@
           "centerY": 1303
         }
       ],
-      "dominantColor": "#695b52",
-      "zone_text_centers": [
-        {
-          "cx": 276,
-          "cy": 265
-        },
-        {
-          "cx": 793,
-          "cy": 109
-        },
-        {
-          "cx": 493,
-          "cy": 983
-        },
-        null,
-        null,
-        null
-      ]
+      "dominantColor": "#695b52"
     },
     {
       "file": "page-038.jpg",
@@ -2220,78 +1494,21 @@
           "centerY": 1458
         }
       ],
-      "dominantColor": "#a58b8e",
-      "zone_text_centers": [
-        {
-          "cx": 290,
-          "cy": 196
-        },
-        {
-          "cx": 910,
-          "cy": 374
-        },
-        {
-          "cx": 340,
-          "cy": 1180
-        },
-        {
-          "cx": 790,
-          "cy": 953
-        },
-        null,
-        null
-      ]
+      "dominantColor": "#a58b8e"
     },
     {
       "file": "page-039.jpg",
       "width": 1292,
       "height": 2010,
       "panels": [],
-      "dominantColor": "#796a6a",
-      "zone_text_centers": [
-        {
-          "cx": 456,
-          "cy": 173
-        },
-        null,
-        {
-          "cx": 404,
-          "cy": 896
-        },
-        {
-          "cx": 916,
-          "cy": 1044
-        },
-        null,
-        {
-          "cx": 953,
-          "cy": 1454
-        }
-      ]
+      "dominantColor": "#796a6a"
     },
     {
       "file": "page-040.jpg",
       "width": 1294,
       "height": 2010,
       "panels": [],
-      "dominantColor": "#4a3a43",
-      "zone_text_centers": [
-        {
-          "cx": 304,
-          "cy": 219
-        },
-        {
-          "cx": 1114,
-          "cy": 210
-        },
-        {
-          "cx": 248,
-          "cy": 1158
-        },
-        null,
-        null,
-        null
-      ]
+      "dominantColor": "#4a3a43"
     },
     {
       "file": "page-041.jpg",
@@ -2339,24 +1556,7 @@
           "centerY": 1437
         }
       ],
-      "dominantColor": "#665b58",
-      "zone_text_centers": [
-        {
-          "cx": 387,
-          "cy": 144
-        },
-        null,
-        {
-          "cx": 393,
-          "cy": 915
-        },
-        {
-          "cx": 868,
-          "cy": 1060
-        },
-        null,
-        null
-      ]
+      "dominantColor": "#665b58"
     },
     {
       "file": "page-042.jpg",
@@ -2396,27 +1596,7 @@
           "centerY": 1303
         }
       ],
-      "dominantColor": "#5f5e62",
-      "zone_text_centers": [
-        {
-          "cx": 303,
-          "cy": 116
-        },
-        {
-          "cx": 1038,
-          "cy": 247
-        },
-        {
-          "cx": 263,
-          "cy": 1002
-        },
-        {
-          "cx": 1046,
-          "cy": 1260
-        },
-        null,
-        null
-      ]
+      "dominantColor": "#5f5e62"
     },
     {
       "file": "page-043.jpg",
@@ -2464,27 +1644,7 @@
           "centerY": 1798
         }
       ],
-      "dominantColor": "#615b58",
-      "zone_text_centers": [
-        {
-          "cx": 227,
-          "cy": 138
-        },
-        {
-          "cx": 922,
-          "cy": 350
-        },
-        null,
-        {
-          "cx": 1089,
-          "cy": 706
-        },
-        null,
-        {
-          "cx": 708,
-          "cy": 1642
-        }
-      ]
+      "dominantColor": "#615b58"
     },
     {
       "file": "page-044.jpg",
@@ -2548,27 +1708,7 @@
           "centerY": 1669
         }
       ],
-      "dominantColor": "#4a4534",
-      "zone_text_centers": [
-        {
-          "cx": 300,
-          "cy": 256
-        },
-        null,
-        null,
-        {
-          "cx": 969,
-          "cy": 932
-        },
-        {
-          "cx": 229,
-          "cy": 1606
-        },
-        {
-          "cx": 1084,
-          "cy": 1636
-        }
-      ]
+      "dominantColor": "#4a4534"
     },
     {
       "file": "page-045.jpg",
@@ -2608,48 +1748,14 @@
           "centerY": 1461
         }
       ],
-      "dominantColor": "#89878e",
-      "zone_text_centers": [
-        {
-          "cx": 381,
-          "cy": 136
-        },
-        {
-          "cx": 1065,
-          "cy": 153
-        },
-        {
-          "cx": 385,
-          "cy": 882
-        },
-        null,
-        null,
-        {
-          "cx": 713,
-          "cy": 1831
-        }
-      ]
+      "dominantColor": "#89878e"
     },
     {
       "file": "page-046.jpg",
       "width": 1294,
       "height": 2010,
       "panels": [],
-      "dominantColor": "#dddcdc",
-      "zone_text_centers": [
-        null,
-        {
-          "cx": 1019,
-          "cy": 411
-        },
-        null,
-        null,
-        {
-          "cx": 644,
-          "cy": 1458
-        },
-        null
-      ]
+      "dominantColor": "#dddcdc"
     },
     {
       "file": "page-047.jpg",
@@ -2673,21 +1779,7 @@
           "centerY": 1005
         }
       ],
-      "dominantColor": "#9b7729",
-      "zone_text_centers": [
-        null,
-        {
-          "cx": 935,
-          "cy": 656
-        },
-        null,
-        null,
-        {
-          "cx": 372,
-          "cy": 1535
-        },
-        null
-      ]
+      "dominantColor": "#9b7729"
     },
     {
       "file": "page-048.jpg",
@@ -2751,27 +1843,7 @@
           "centerY": 1703
         }
       ],
-      "dominantColor": "#64514f",
-      "zone_text_centers": [
-        null,
-        null,
-        {
-          "cx": 390,
-          "cy": 1086
-        },
-        {
-          "cx": 659,
-          "cy": 980
-        },
-        {
-          "cx": 361,
-          "cy": 1811
-        },
-        {
-          "cx": 949,
-          "cy": 1813
-        }
-      ]
+      "dominantColor": "#64514f"
     }
   ]
 }

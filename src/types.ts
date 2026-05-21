@@ -11,12 +11,6 @@ export interface Panel {
   centerY: number;
 }
 
-/** Text-shifted snap center for a single zone (produced by the bubble detector). */
-export interface ZoneTextCenter {
-  cx: number;
-  cy: number;
-}
-
 export interface PageManifest {
   /** Relative image filename within the issue folder (static-mode lookup) */
   file: string;
@@ -31,13 +25,6 @@ export interface PageManifest {
   panels: Panel[];
   /** Dominant color (hex) for letterbox background. Optional. */
   dominantColor?: string;
-  /**
-   * Per-zone text snap centers (TL→TR→ML→MR→BL→BR, 6 entries).
-   * Produced by the speech-bubble detector in the harvester.
-   * null entry = no text in that zone → reader uses geometric zone center.
-   * Absent entirely = issue predates text detection → all zones use geometric centers.
-   */
-  zone_text_centers?: (ZoneTextCenter | null)[] | null;
 }
 
 export interface IssueManifest {
