@@ -19,6 +19,21 @@ function titleRelevance(query: string, articleTitle: string): number {
   return words.filter((w) => title.includes(w)).length / words.length;
 }
 
+/** Strip version tags, years, publisher tags so searches hit the right article.
+ *  "Tales from the Crypt v2" → "Tales from the Crypt"
+ *  "Steam Wars - Bounty Hunters" → "Steam Wars Bounty Hunters"
+ */
+function cleanSearchQuery(raw: string): string {
+  return raw
+    .replace(/\bvol\.?\s*\d+\b/gi, "")   // vol 2 / vol. 2
+    .replace(/\bv\d+\b/gi, "")            // v2 / v3
+    .replace(/\(\d{4}\)/g, "")            // (2007)
+    .replace(/\[[^\]]*\]/g, "")           // [Papercutz]
+    .replace(/[-–—]+/g, " ")             // hyphens/dashes → space
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function stripHtml(html: string): string {
   return (html ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -57,9 +72,10 @@ function fetchJsonp(url: string): Promise<JsonpResult> {
 // Comic Vine volume lookup (JSONP, no CORS issues)
 async function fetchComicVineBlurb(seriesTitle: string): Promise<string | null> {
   try {
+    const q = cleanSearchQuery(seriesTitle);
     const url = new URL("https://comicvine.gamespot.com/api/volumes/");
     url.searchParams.set("api_key", CV_KEY);
-    url.searchParams.set("filter", `name:${seriesTitle}`);
+    url.searchParams.set("filter", `name:${q}`);
     url.searchParams.set("field_list", "id,name,deck,description,count_of_issues");
     url.searchParams.set("limit", "10");
 
@@ -67,7 +83,7 @@ async function fetchComicVineBlurb(seriesTitle: string): Promise<string | null> 
     if (data.status_code !== 1) return null;
 
     const scored = (data.results ?? [])
-      .map((r) => ({ r, score: titleRelevance(seriesTitle, r.name ?? "") }))
+      .map((r) => ({ r, score: titleRelevance(q, r.name ?? "") }))
       .filter((s) => s.score >= 0.5)
       .sort((a, b) =>
         b.score - a.score || (b.r.count_of_issues ?? 0) - (a.r.count_of_issues ?? 0)
@@ -85,9 +101,10 @@ async function fetchComicVineBlurb(seriesTitle: string): Promise<string | null> 
 
 // Wikipedia summary lookup
 async function fetchWikiSummary(query: string): Promise<string | null> {
+  const q = cleanSearchQuery(query);
   const MIN_RELEVANCE = 0.5;
   try {
-    const slug = encodeURIComponent(query.trim().replace(/\s+/g, "_"));
+    const slug = encodeURIComponent(q.replace(/\s+/g, "_"));
     const directRes = await fetch(
       `https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`
     );
@@ -96,20 +113,20 @@ async function fetchWikiSummary(query: string): Promise<string | null> {
       if (
         data.type !== "disambiguation" &&
         data.extract &&
-        titleRelevance(query, data.title as string) >= MIN_RELEVANCE
+        titleRelevance(q, data.title as string) >= MIN_RELEVANCE
       ) {
         return data.extract as string;
       }
     }
 
     const searchRes = await fetch(
-      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query + " comic book")}&format=json&origin=*&srlimit=3`
+      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q + " comic book")}&format=json&origin=*&srlimit=3`
     );
     if (searchRes.ok) {
       const searchData = await searchRes.json();
       const hits: { title: string }[] = searchData?.query?.search ?? [];
       for (const hit of hits) {
-        if (titleRelevance(query, hit.title) < MIN_RELEVANCE) continue;
+        if (titleRelevance(q, hit.title) < MIN_RELEVANCE) continue;
         const sumRes = await fetch(
           `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(hit.title.replace(/\s+/g, "_"))}`
         );
