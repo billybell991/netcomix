@@ -56,7 +56,7 @@ export function App() {
   if (route.name === "admin") {
     return (
       <AdminView
-        onBack={() => setRoute({ name: "library" })}
+        onBack={() => { setRoute({ name: "library" }); setReloadKey((k) => k + 1); }}
         onOpenSetup={() => setRoute({ name: "setup" })}
       />
     );
