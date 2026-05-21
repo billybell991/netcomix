@@ -56,19 +56,19 @@ export function applyZoneGrid(manifest: IssueManifest): IssueManifest {
 
     for (let row = 0; row < ZONE_ROWS; row++) {
       for (let col = 0; col < ZONE_COLS; col++) {
+        const zoneIdx = row * ZONE_COLS + col;
         const x = col * zoneW;
         const y = row * zoneH;
         // Last column / row absorbs any remainder so there's no gap.
         const w = col === ZONE_COLS - 1 ? page.width  - x : zoneW;
         const h = row === ZONE_ROWS - 1 ? page.height - y : zoneH;
-        panels.push({
-          x,
-          y,
-          w,
-          h,
-          centerX: x + Math.round(w / 2),
-          centerY: y + Math.round(h / 2),
-        });
+
+        // Use text-shifted center when the harvester found a bubble in this zone.
+        const textEntry = page.zone_text_centers?.[zoneIdx];
+        const centerX = textEntry ? textEntry.cx : x + Math.round(w / 2);
+        const centerY = textEntry ? textEntry.cy : y + Math.round(h / 2);
+
+        panels.push({ x, y, w, h, centerX, centerY });
       }
     }
 
