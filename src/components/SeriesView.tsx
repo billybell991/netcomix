@@ -19,8 +19,6 @@ export function SeriesView({ series, index, onBack, onSelectIssue, coverUrl }: P
         title: preview.title,
         coverSrc: coverUrl(`${preview.path}/${preview.cover}`, preview.coverFileId, preview.coverUrl),
         meta: `${preview.pageCount} pages`,
-        wikiQuery: series.title,
-        seriesTitle: series.title,
       }
     : null;
 

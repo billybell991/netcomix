@@ -219,16 +219,6 @@
   letter-spacing: 0.02em;
 }
 .preview-open-btn:active { background: #b5070f; }
-.preview-blurb {
-  font-size: 12px;
-  color: #999;
-  line-height: 1.65;
-  margin: 0;
-}
-.preview-blurb--loading {
-  color: #555;
-  font-style: italic;
-}
 @keyframes previewFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }

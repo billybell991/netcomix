@@ -106,7 +106,6 @@ function Grid({
         title: preview.title,
         coverSrc: coverUrl(preview.path, preview.cover, preview.coverFileId, preview.coverUrl),
         meta: `${preview.issueCount} issue${preview.issueCount === 1 ? "" : "s"}`,
-        wikiQuery: preview.title,
       }
     : null;
 
