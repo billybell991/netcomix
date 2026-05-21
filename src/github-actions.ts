@@ -65,40 +65,51 @@ export async function latestScanRun(): Promise<WorkflowRun | null> {
  * This avoids the Contents API's 10-second branch-protection validation timeout that
  * triggers on large files (the blob upload has no validation; only the tiny ref-update does).
  */
-const CHUNK_SIZE = 15 * 1024 * 1024; // 15 MB raw → ~20 MB base64, well under GitHub's ~40 MB API limit
+/**
+ * Upload multiple CBR/CBZ files (any size) to comics-source/ in a SINGLE commit.
+ *
+ * Strategy:
+ *  1. Files ≤ 15 MB  → committed as-is.
+ *  2. Files  > 15 MB → split into 15 MB chunks committed as
+ *     {filename}.part001, .part002, … (scan.yml reassembles them before processing).
+ *
+ * All blobs are uploaded first (content-addressed, no branch locking), then
+ * a SINGLE tree+commit+ref-PATCH is executed with up to 10 retries.
+ * One PATCH = one chance for a race condition, vs. one per chunk with the old approach.
+ */
 
-/** Upload a single Blob (or File slice) to a path in the repo, with retry on 422. */
-async function commitBlobToPath(
-  data: Blob,
-  repoPath: string,
+const CHUNK_SIZE = 15 * 1024 * 1024; // 15 MB raw → ~20 MB base64, well within the ~100 MB API limit
+
+/** Upload raw bytes to the Git Blobs API and return the blob sha. */
+async function uploadBlob(data: Blob): Promise<string> {
+  const { ghOwner, ghRepo } = getConfig();
+  const base = `${GH_API}/repos/${ghOwner}/${ghRepo}`;
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+    reader.onerror = () => reject(new Error('FileReader error'));
+    reader.readAsDataURL(data);
+  });
+  const res = await fetch(`${base}/git/blobs`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: base64, encoding: 'base64' }),
+  });
+  if (!res.ok) { const b = await res.text(); throw new Error(`GitHub ${res.status}: ${b.slice(0, 300)}`); }
+  const { sha } = await res.json() as { sha: string };
+  return sha;
+}
+
+/** Push a set of pre-uploaded blobs as ONE commit. Retries up to 10× on 422. */
+async function pushEntries(
+  entries: Array<{ path: string; sha: string }>,
   message: string,
   onProgress?: (pct: number) => void,
 ): Promise<void> {
   const { ghOwner, ghRepo } = getConfig();
   const base = `${GH_API}/repos/${ghOwner}/${ghRepo}`;
-
-  // 1. Read as base64
-  const base64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onprogress = (e) => { if (e.lengthComputable) onProgress?.(e.loaded / e.total * 0.3); };
-    reader.onload = () => { onProgress?.(0.35); resolve((reader.result as string).split(',')[1]); };
-    reader.onerror = () => reject(new Error(`Failed to read data for ${repoPath}`));
-    reader.readAsDataURL(data);
-  });
-
-  // 2. Create blob
-  const blobRes = await fetch(`${base}/git/blobs`, {
-    method: 'POST',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content: base64, encoding: 'base64' }),
-  });
-  if (!blobRes.ok) { const b = await blobRes.text(); throw new Error(`GitHub ${blobRes.status}: ${b.slice(0, 300)}`); }
-  const { sha: blobSha } = await blobRes.json() as { sha: string };
-  onProgress?.(0.6);
-
-  // 3–6: build tree+commit+ref — retry on 422 with backoff (concurrent CI pushes)
-  for (let attempt = 0; attempt < 5; attempt++) {
-    if (attempt > 0) await new Promise(r => setTimeout(r, 2000 + attempt * 1000));
+  for (let attempt = 0; attempt < 10; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 3000 + attempt * 2000));
 
     const refRes = await fetch(`${base}/git/ref/heads/main`, { headers: authHeaders() });
     if (!refRes.ok) { const b = await refRes.text(); throw new Error(`GitHub ${refRes.status}: ${b.slice(0, 300)}`); }
@@ -111,11 +122,13 @@ async function commitBlobToPath(
     const treeRes = await fetch(`${base}/git/trees`, {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ base_tree: treeSha, tree: [{ path: repoPath, mode: '100644', type: 'blob', sha: blobSha }] }),
+      body: JSON.stringify({
+        base_tree: treeSha,
+        tree: entries.map(e => ({ path: e.path, mode: '100644', type: 'blob', sha: e.sha })),
+      }),
     });
     if (!treeRes.ok) { const b = await treeRes.text(); throw new Error(`GitHub ${treeRes.status}: ${b.slice(0, 300)}`); }
     const { sha: newTreeSha } = await treeRes.json() as { sha: string };
-    onProgress?.(0.8);
 
     const newCommitRes = await fetch(`${base}/git/commits`, {
       method: 'POST',
@@ -131,35 +144,53 @@ async function commitBlobToPath(
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ sha: newCommitSha }),
     });
-    if (updateRes.status === 422 && attempt < 4) continue;
+    if (updateRes.status === 422 && attempt < 9) continue; // HEAD moved; re-read and retry
     if (!updateRes.ok) { const b = await updateRes.text(); throw new Error(`GitHub ${updateRes.status}: ${b.slice(0, 300)}`); }
     onProgress?.(1.0);
     return;
   }
-  throw new Error('Failed to push after 5 attempts (ref kept moving — a CI job may be running, try again in a minute)');
+  throw new Error('Failed to push after 10 attempts (ref kept moving — try again in a minute)');
 }
 
 /**
- * Commit a CBR/CBZ to comics-source/. Files ≤ 15 MB are committed in one shot;
- * larger files are split into 15 MB .part001/.part002/… chunks that scan.yml reassembles.
+ * Upload one or more comic files to comics-source/ in a single atomic commit.
+ * Large files are transparently split into 15 MB .partNNN chunks.
  */
-export async function commitComicToRepo(
-  file: File,
+export async function commitComicsToRepo(
+  files: File[],
   onProgress?: (pct: number) => void,
 ): Promise<void> {
-  if (file.size <= CHUNK_SIZE) {
-    await commitBlobToPath(file, `comics-source/${file.name}`, `add comic: ${file.name}`, onProgress);
-  } else {
-    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-    for (let i = 0; i < totalChunks; i++) {
-      const start = i * CHUNK_SIZE;
-      const chunk = file.slice(start, Math.min(start + CHUNK_SIZE, file.size));
-      const partName = `${file.name}.part${String(i + 1).padStart(3, '0')}`;
-      const chunkProg = (pct: number) => onProgress?.((i + pct) / totalChunks);
-      await commitBlobToPath(chunk, `comics-source/${partName}`,
-        `add comic part ${i + 1}/${totalChunks}: ${file.name}`, chunkProg);
+  // Build the full list of (path, data) entries, expanding large files into chunks
+  const entryDefs: Array<{ path: string; data: Blob }> = [];
+  for (const file of files) {
+    if (file.size <= CHUNK_SIZE) {
+      entryDefs.push({ path: `comics-source/${file.name}`, data: file });
+    } else {
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        entryDefs.push({
+          path: `comics-source/${file.name}.part${String(i + 1).padStart(3, '0')}`,
+          data: file.slice(start, Math.min(start + CHUNK_SIZE, file.size)),
+        });
+      }
     }
   }
+
+  // Upload all blobs first (content-addressed, no branch locking, no race condition)
+  const total = entryDefs.length;
+  const entries: Array<{ path: string; sha: string }> = [];
+  for (let i = 0; i < total; i++) {
+    const sha = await uploadBlob(entryDefs[i].data);
+    entries.push({ path: entryDefs[i].path, sha });
+    onProgress?.((i + 1) / total * 0.88);
+  }
+
+  // ONE commit + ONE PATCH for everything
+  const msg = files.length === 1
+    ? `add comic: ${files[0].name}`
+    : `add comics: ${files.map(f => f.name).join(', ')}`;
+  await pushEntries(entries, msg, (pct) => onProgress?.(0.88 + pct * 0.12));
 }
 
 export async function triggerRedetect(issueId: string): Promise<void> {

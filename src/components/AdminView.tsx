@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { latestScanRun, triggerScan, commitComicToRepo, type WorkflowRun } from "../github-actions";
+import { latestScanRun, triggerScan, commitComicsToRepo, type WorkflowRun } from "../github-actions";
 import { isGithubConfigured } from "../config";
 
 interface Props {
@@ -61,11 +61,8 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
     setUploadProgress(0);
     setUploadError(null);
     setUploadDone(false);
-    const n = uploadFiles.length;
     try {
-      for (let i = 0; i < n; i++) {
-        await commitComicToRepo(uploadFiles[i], (pct) => setUploadProgress((i + pct) / n));
-      }
+      await commitComicsToRepo(uploadFiles, setUploadProgress);
       setUploadDone(true);
       setUploadFiles([]);
       await triggerScan();
