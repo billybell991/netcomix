@@ -1,17 +1,17 @@
-import { useEffect, useState } from "react";
-import { getConfig } from "../config";
+﻿import { useEffect, useState } from "react";
+
+const CV_KEY = "5e7b65578da0df8113f9e2c75daf6ec8705fcb7b";
 
 export interface PreviewItem {
   title: string;
   coverSrc: string;
   meta: string;
-  /** Query sent to Wikipedia — used for series-level cards when no server is configured */
+  /** Wikipedia search query — used for series cards */
   wikiQuery: string;
-  /** When set, Comic Vine volume lookup is attempted via the server proxy first */
+  /** When set, Comic Vine is tried first via JSONP (bypasses CORS) */
   seriesTitle?: string;
 }
 
-/** Returns fraction of significant (>3 char) query words found in the article title. */
 function titleRelevance(query: string, articleTitle: string): number {
   const words = query.toLowerCase().split(/\W+/).filter((w) => w.length > 3);
   if (words.length === 0) return 0;
@@ -19,10 +19,74 @@ function titleRelevance(query: string, articleTitle: string): number {
   return words.filter((w) => title.includes(w)).length / words.length;
 }
 
+function stripHtml(html: string): string {
+  return (html ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// JSONP helper — injects a <script> tag, bypassing CORS
+interface JsonpResult {
+  status_code: number;
+  results: Array<{
+    name: string | null;
+    deck: string | null;
+    description: string | null;
+    count_of_issues: number;
+  }>;
+}
+
+function fetchJsonp(url: string): Promise<JsonpResult> {
+  return new Promise((resolve, reject) => {
+    const cbName = `_cv_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const timeout = setTimeout(() => { cleanup(); reject(new Error("timeout")); }, 8000);
+    (window as Record<string, unknown>)[cbName] = (data: JsonpResult) => {
+      cleanup();
+      resolve(data);
+    };
+    const script = document.createElement("script");
+    script.src = `${url}&format=jsonp&json_callback=${cbName}`;
+    script.onerror = () => { cleanup(); reject(new Error("load error")); };
+    document.head.appendChild(script);
+    function cleanup() {
+      clearTimeout(timeout);
+      delete (window as Record<string, unknown>)[cbName];
+      script.remove();
+    }
+  });
+}
+
+// Comic Vine volume lookup (JSONP, no CORS issues)
+async function fetchComicVineBlurb(seriesTitle: string): Promise<string | null> {
+  try {
+    const url = new URL("https://comicvine.gamespot.com/api/volumes/");
+    url.searchParams.set("api_key", CV_KEY);
+    url.searchParams.set("filter", `name:${seriesTitle}`);
+    url.searchParams.set("field_list", "id,name,deck,description,count_of_issues");
+    url.searchParams.set("limit", "10");
+
+    const data = await fetchJsonp(url.toString());
+    if (data.status_code !== 1) return null;
+
+    const scored = (data.results ?? [])
+      .map((r) => ({ r, score: titleRelevance(seriesTitle, r.name ?? "") }))
+      .filter((s) => s.score >= 0.5)
+      .sort((a, b) =>
+        b.score - a.score || (b.r.count_of_issues ?? 0) - (a.r.count_of_issues ?? 0)
+      );
+
+    for (const { r } of scored) {
+      const text = r.deck || stripHtml(r.description ?? "");
+      if (text) return text;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Wikipedia summary lookup
 async function fetchWikiSummary(query: string): Promise<string | null> {
   const MIN_RELEVANCE = 0.5;
   try {
-    // Try direct title match first
     const slug = encodeURIComponent(query.trim().replace(/\s+/g, "_"));
     const directRes = await fetch(
       `https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`
@@ -38,7 +102,6 @@ async function fetchWikiSummary(query: string): Promise<string | null> {
       }
     }
 
-    // Fall back to search — fetch top 3 and pick the most relevant
     const searchRes = await fetch(
       `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query + " comic book")}&format=json&origin=*&srlimit=3`
     );
@@ -62,41 +125,7 @@ async function fetchWikiSummary(query: string): Promise<string | null> {
   }
 }
 
-interface CVIssue {
-  name: string;
-  deck: string | null;
-  description: string | null;
-  volume?: { name: string };
-}
-
-function stripHtml(html: string): string {
-  return (html ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-/** Call the server-side Comic Vine proxy to get a volume blurb (avoids CORS). */
-async function fetchComicVineViaProxy(seriesTitle: string): Promise<string | null> {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cfg = getConfig() as any;
-    const apiUrl: string = (cfg.apiUrl ?? "").replace(/\/+$/, "");
-    if (!apiUrl) return null;
-    const accessCode: string = cfg.accessCode ?? "";
-    const headers: Record<string, string> = accessCode
-      ? { Authorization: `Bearer ${accessCode}` }
-      : {};
-    const res = await fetch(
-      `${apiUrl}/api/comicvine?q=${encodeURIComponent(seriesTitle)}`,
-      { headers }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    return (data as { blurb: string | null }).blurb;
-  } catch {
-    return null;
-  }
-}
-
-
+interface Props {
   item: PreviewItem | null;
   onOpen: () => void;
   onClose: () => void;
@@ -107,19 +136,14 @@ export function CardPreview({ item, onOpen, onClose }: Props) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!item) {
-      setSummary(null);
-      return;
-    }
+    if (!item) { setSummary(null); return; }
     setLoading(true);
     setSummary(null);
     const load = async () => {
-      // Issue card: try Comic Vine proxy first, then fall back to Wikipedia
       if (item.seriesTitle) {
-        const cvBlurb = await fetchComicVineViaProxy(item.seriesTitle);
+        const cvBlurb = await fetchComicVineBlurb(item.seriesTitle);
         if (cvBlurb) { setSummary(cvBlurb); setLoading(false); return; }
       }
-      // Series card (or CV miss): use Wikipedia
       const wikiBlurb = await fetchWikiSummary(item.wikiQuery);
       setSummary(wikiBlurb);
       setLoading(false);
