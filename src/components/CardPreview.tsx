@@ -8,7 +8,16 @@ export interface PreviewItem {
   wikiQuery: string;
 }
 
+/** Returns fraction of significant (>3 char) query words found in the article title. */
+function titleRelevance(query: string, articleTitle: string): number {
+  const words = query.toLowerCase().split(/\W+/).filter((w) => w.length > 3);
+  if (words.length === 0) return 0;
+  const title = articleTitle.toLowerCase();
+  return words.filter((w) => title.includes(w)).length / words.length;
+}
+
 async function fetchWikiSummary(query: string): Promise<string | null> {
+  const MIN_RELEVANCE = 0.5;
   try {
     // Try direct title match first
     const slug = encodeURIComponent(query.trim().replace(/\s+/g, "_"));
@@ -17,23 +26,30 @@ async function fetchWikiSummary(query: string): Promise<string | null> {
     );
     if (directRes.ok) {
       const data = await directRes.json();
-      if (data.type !== "disambiguation" && data.extract) return data.extract as string;
+      if (
+        data.type !== "disambiguation" &&
+        data.extract &&
+        titleRelevance(query, data.title as string) >= MIN_RELEVANCE
+      ) {
+        return data.extract as string;
+      }
     }
 
-    // Fall back to search
+    // Fall back to search — fetch top 3 and pick the most relevant
     const searchRes = await fetch(
-      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query + " comic")}&format=json&origin=*&srlimit=1`
+      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query + " comic book")}&format=json&origin=*&srlimit=3`
     );
     if (searchRes.ok) {
       const searchData = await searchRes.json();
-      const hit = searchData?.query?.search?.[0];
-      if (hit) {
+      const hits: { title: string }[] = searchData?.query?.search ?? [];
+      for (const hit of hits) {
+        if (titleRelevance(query, hit.title) < MIN_RELEVANCE) continue;
         const sumRes = await fetch(
-          `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent((hit.title as string).replace(/\s+/g, "_"))}`
+          `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(hit.title.replace(/\s+/g, "_"))}`
         );
         if (sumRes.ok) {
           const sumData = await sumRes.json();
-          return (sumData.extract as string) ?? null;
+          if (sumData.extract) return sumData.extract as string;
         }
       }
     }
