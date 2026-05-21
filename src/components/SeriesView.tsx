@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { IssueIndexEntry, SeriesEntry, SeriesIndex } from "../types";
 import { CardPreview } from "./CardPreview";
 import type { PreviewItem } from "./CardPreview";
+import { getConfig } from "../config";
 
 interface Props {
   series: SeriesEntry;
@@ -20,6 +21,8 @@ export function SeriesView({ series, index, onBack, onSelectIssue, coverUrl }: P
         coverSrc: coverUrl(`${preview.path}/${preview.cover}`, preview.coverFileId, preview.coverUrl),
         meta: `${preview.pageCount} pages`,
         wikiQuery: series.title,
+        comicVineKey: getConfig().comicVineKey || undefined,
+        seriesTitle: series.title,
       }
     : null;
 

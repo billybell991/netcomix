@@ -4,8 +4,12 @@ export interface PreviewItem {
   title: string;
   coverSrc: string;
   meta: string;
-  /** Query sent to Wikipedia for flavor text — usually the series title */
+  /** Query sent to Wikipedia — used for series-level cards */
   wikiQuery: string;
+  /** When set, Comic Vine is used instead of Wikipedia */
+  comicVineKey?: string;
+  /** Series title used as context for the Comic Vine search */
+  seriesTitle?: string;
 }
 
 /** Returns fraction of significant (>3 char) query words found in the article title. */
@@ -59,7 +63,50 @@ async function fetchWikiSummary(query: string): Promise<string | null> {
   }
 }
 
-interface Props {
+interface CVIssue {
+  name: string;
+  deck: string | null;
+  description: string | null;
+  volume?: { name: string };
+}
+
+function stripHtml(html: string): string {
+  return (html ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+async function fetchComicVineBlurb(
+  issueTitle: string,
+  seriesTitle: string,
+  apiKey: string
+): Promise<string | null> {
+  try {
+    const query = `${seriesTitle} ${issueTitle}`.trim();
+    const url = new URL("https://comicvine.gamespot.com/api/search/");
+    url.searchParams.set("api_key", apiKey);
+    url.searchParams.set("format", "json");
+    url.searchParams.set("resources", "issue");
+    url.searchParams.set("query", query);
+    url.searchParams.set("field_list", "id,name,deck,description,volume");
+    url.searchParams.set("limit", "5");
+
+    const res = await fetch(url.toString());
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.status_code !== 1) return null;
+
+    for (const result of (data.results as CVIssue[])) {
+      const volName = result.volume?.name ?? "";
+      if (titleRelevance(seriesTitle, volName) < 0.4) continue;
+      if (result.deck) return result.deck;
+      if (result.description) return stripHtml(result.description).slice(0, 500);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+
   item: PreviewItem | null;
   onOpen: () => void;
   onClose: () => void;
@@ -76,7 +123,11 @@ export function CardPreview({ item, onOpen, onClose }: Props) {
     }
     setLoading(true);
     setSummary(null);
-    fetchWikiSummary(item.wikiQuery).then((text) => {
+    const fetcher =
+      item.comicVineKey && item.seriesTitle
+        ? fetchComicVineBlurb(item.title, item.seriesTitle, item.comicVineKey)
+        : fetchWikiSummary(item.wikiQuery);
+    fetcher.then((text) => {
       setSummary(text);
       setLoading(false);
     });
