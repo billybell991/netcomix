@@ -1,0 +1,255 @@
+/* ─── Library editorial layout ──────────────────────────────────────────── */
+
+/* Hero — smart resume banner */
+.lib-hero {
+  position: relative;
+  height: 136px;
+  overflow: hidden;
+  margin: 0 0 0;
+  cursor: pointer;
+}
+.lib-hero-bg {
+  position: absolute;
+  inset: -12px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(24px) brightness(0.35) saturate(1.4);
+  transform: scale(1.1);
+}
+.lib-hero-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(10,10,10,0.15) 0%,
+    transparent 40%,
+    rgba(10,10,10,0.7) 100%
+  );
+}
+.lib-hero-bottom {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 44px;
+  background: linear-gradient(transparent, var(--bg));
+}
+.lib-hero-cover {
+  position: absolute;
+  bottom: 14px; left: 16px;
+  width: 62px; height: 88px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  box-shadow: 4px 4px 16px rgba(0,0,0,0.8);
+  flex-shrink: 0;
+}
+.lib-hero-info {
+  position: absolute;
+  bottom: 18px;
+  left: 90px; right: 14px;
+}
+.lib-hero-eyebrow {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.lib-hero-title {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: #fff;
+}
+.lib-hero-meta {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+.lib-hero-bar {
+  height: 2px;
+  background: var(--surface-3);
+  border-radius: 1px;
+  margin-top: 6px;
+}
+.lib-hero-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 1px;
+  transition: width 0.4s ease;
+}
+
+/* Horizontal strip (Favourites / In Progress) */
+.lib-section {
+  padding: 14px 16px 0;
+}
+.lib-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.lib-section-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.lib-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+  /* hide scrollbar */
+  scrollbar-width: none;
+}
+.lib-strip::-webkit-scrollbar { display: none; }
+
+.lib-strip-card {
+  flex: 0 0 70px;
+  cursor: pointer;
+}
+.lib-strip-cover {
+  width: 70px;
+  height: 98px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+  transition: transform 0.15s;
+}
+.lib-strip-card:active .lib-strip-cover { transform: scale(0.94); }
+.lib-strip-cover img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.lib-strip-star {
+  position: absolute;
+  top: 4px; right: 4px;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: #ffd60a;
+}
+.lib-strip-prog {
+  height: 2px;
+  background: var(--surface-2);
+  border-radius: 1px;
+  margin-top: 5px;
+}
+.lib-strip-prog-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 1px;
+}
+.lib-strip-name {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+  line-height: 1.35;
+  /* allow 2-line wrap */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Library grid section */
+.lib-grid-section {
+  padding: 14px 16px 0;
+}
+.lib-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-bottom: calc(var(--safe-bottom) + 28px);
+}
+.lib-grid-card {
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.lib-grid-card:active { transform: scale(0.95); }
+.lib-grid-cover {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+}
+.lib-grid-cover img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.lib-grid-badge {
+  position: absolute;
+  top: 6px; right: 6px;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  color: var(--text-dim);
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.lib-grid-star {
+  position: absolute;
+  top: 6px; left: 6px;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,0.12);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem;
+  z-index: 2;
+  transition: transform 0.15s;
+}
+.lib-grid-star:active { transform: scale(1.2); }
+.lib-grid-star.on { color: #ffd60a; }
+.lib-grid-info {
+  padding: 7px 8px 8px;
+}
+.lib-grid-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.lib-grid-meta {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.lib-grid-prog {
+  height: 2px;
+  background: var(--surface-2);
+  border-radius: 1px;
+  margin-top: 5px;
+}
+.lib-grid-prog-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 1px;
+}
+
+/* Skeleton strips */
+.lib-strip-card.skeleton {
+  flex: 0 0 70px;
+}
+.lib-strip-card.skeleton .lib-strip-cover {
+  background: var(--surface-2);
+  animation: shimmer 1.4s infinite;
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+}

@@ -1,134 +1,276 @@
-import { useState } from "react";
-import type { Library, SeriesEntry } from "../types";
-import { coverUrl } from "../library";
-import { toggleFavorite, getFavorites } from "../storage";
+import { useEffect, useState } from "react";
+import type { IssueIndexEntry, Library, SeriesEntry } from "../types";
+import { coverUrl, fetchSeries } from "../library";
+import {
+  getFavorites, getInProgressSeriesIds, getLastRead, getProgress,
+  toggleFavorite, type LastRead,
+} from "../storage";
+import "./LibraryView.css";
+
+interface HeroData {
+  series: SeriesEntry;
+  issue: IssueIndexEntry;
+  /** pageIndex from stored progress — used for the progress bar */
+  pageIndex: number;
+}
 
 interface Props {
   library: Library | null;
   onSelectSeries: (s: SeriesEntry) => void;
+  onResumeReading: (series: SeriesEntry, issue: IssueIndexEntry) => void;
   onOpenAdmin?: () => void;
 }
 
-export function LibraryView({ library, onSelectSeries, onOpenAdmin }: Props) {
-  const [query, setQuery] = useState("");
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/** Progress fraction (0–1) for a single issue based on stored progress. */
+function issueProgressFraction(issueId: string, pageCount: number): number {
+  if (pageCount <= 1) return 0;
+  const prog = getProgress(issueId);
+  if (!prog) return 0;
+  const pageIndex = parseInt(prog.split(":")[0], 10);
+  if (isNaN(pageIndex) || pageIndex <= 0) return 0;
+  return Math.min(pageIndex / (pageCount - 1), 1);
+}
+
+// ─── Component ──────────────────────────────────────────────────────────────
+
+export function LibraryView({ library, onSelectSeries, onResumeReading, onOpenAdmin }: Props) {
   const [favorites, setFavorites] = useState<string[]>(() => getFavorites());
+  const [heroData, setHeroData] = useState<HeroData | null>(null);
+
+  // Load hero data: fetch series.json for the last-read series so we can show
+  // issue title and page count in the banner.
+  useEffect(() => {
+    if (!library) return;
+    const lastRead: LastRead | null = getLastRead();
+    if (!lastRead) { setHeroData(null); return; }
+
+    const series = library.series.find((s) => s.id === lastRead.seriesId);
+    if (!series) { setHeroData(null); return; }
+
+    fetchSeries(series.path)
+      .then((idx) => {
+        const issue = idx.issues.find((i) => i.id === lastRead.issueId);
+        if (!issue) return;
+        const prog = getProgress(issue.id);
+        const pageIndex = prog ? (parseInt(prog.split(":")[0], 10) || 0) : 0;
+        setHeroData({ series, issue, pageIndex });
+      })
+      .catch(() => setHeroData(null)); // fail silently — hero is optional
+  }, [library]);
+
+  if (!library) return <LibrarySkeleton />;
 
   const favSet = new Set(favorites);
+  const allIds = library.series.map((s) => s.id);
+  const inProgressIds = new Set(getInProgressSeriesIds(allIds));
 
-  const sortKey = (t: string) => t.replace(/^(the|a|an)\s+/i, "").trimStart();
+  const favoriteSeries = library.series.filter((s) => favSet.has(s.id));
+  // In-progress strip: in-progress but NOT also a favourite (deduped)
+  const inProgressSeries = library.series.filter(
+    (s) => inProgressIds.has(s.id) && !favSet.has(s.id)
+  );
 
-  const sorted = library
-    ? [...library.series].sort((a, b) => sortKey(a.title).localeCompare(sortKey(b.title)))
-    : [];
-
-  const q = query.trim().toLowerCase();
-  const filtered = q ? sorted.filter((s) => s.title.toLowerCase().includes(q)) : sorted;
-  const favSeries = !q ? filtered.filter((s) => favSet.has(s.id)) : [];
-  const allSeries = !q ? filtered.filter((s) => !favSet.has(s.id)) : filtered;
+  const handleToggleFav = (e: React.MouseEvent, seriesId: string) => {
+    e.stopPropagation();
+    setFavorites(toggleFavorite(seriesId));
+  };
 
   return (
     <div className="shell" data-testid="library-view">
+      {/* Header */}
       <div className="shell-header">
         <div className="app-logo"><span className="accent">NET</span>COMIX</div>
         {onOpenAdmin && (
-          <button className="icon-btn" onClick={onOpenAdmin} aria-label="Upload comics" data-testid="admin-btn">
+          <button
+            className="icon-btn"
+            onClick={onOpenAdmin}
+            aria-label="Upload comics"
+            data-testid="admin-btn"
+          >
             ＋
           </button>
         )}
       </div>
 
-      <div className="shell-body">
-        <input
-          className="search-bar"
-          type="search"
-          placeholder="Search series…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          data-testid="search-input"
-        />
-
-        {!library ? (
-          <SkeletonGrid />
-        ) : filtered.length === 0 ? (
-          <p style={{ color: "var(--text-dim)", fontSize: "0.9rem", padding: "8px 2px" }} data-testid="empty-library">
-            {q ? `No results for "${query}"` : "No comics yet — tap ＋ to upload your first comic."}
-          </p>
-        ) : (
-          <>
-            {favSeries.length > 0 && (
-              <>
-                <div className="section-label">Favourites</div>
-                <SeriesGrid
-                  items={favSeries}
-                  favSet={favSet}
-                  onSelect={onSelectSeries}
-                  onToggleFav={(id) => setFavorites(toggleFavorite(id))}
-                />
-              </>
-            )}
-            {allSeries.length > 0 && (
-              <>
-                {favSeries.length > 0 && <div className="section-label" style={{ marginTop: 8 }}>All Series</div>}
-                <SeriesGrid
-                  items={allSeries}
-                  favSet={favSet}
-                  onSelect={onSelectSeries}
-                  onToggleFav={(id) => setFavorites(toggleFavorite(id))}
-                />
-              </>
-            )}
-          </>
+      <div className="shell-body" style={{ padding: 0 }}>
+        {/* ── Hero ── */}
+        {heroData && (
+          <HeroBanner
+            heroData={heroData}
+            onClick={() => onResumeReading(heroData.series, heroData.issue)}
+          />
         )}
+
+        {/* ── Favourites strip ── */}
+        {favoriteSeries.length > 0 && (
+          <div className="lib-section">
+            <div className="lib-section-header">
+              <span className="lib-section-title">★ Favourites</span>
+            </div>
+            <div className="lib-strip" role="list">
+              {favoriteSeries.map((s) => (
+                <StripCard
+                  key={s.id}
+                  series={s}
+                  showStar
+                  onClick={() => onSelectSeries(s)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── In Progress strip ── */}
+        {inProgressSeries.length > 0 && (
+          <div className="lib-section">
+            <div className="lib-section-header">
+              <span className="lib-section-title">In Progress</span>
+            </div>
+            <div className="lib-strip" role="list">
+              {inProgressSeries.map((s) => (
+                <StripCard
+                  key={s.id}
+                  series={s}
+                  showStar={false}
+                  onClick={() => onSelectSeries(s)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Library grid ── */}
+        <div className="lib-grid-section">
+          <div className="lib-section-header">
+            <span className="lib-section-title">Library</span>
+          </div>
+          {library.series.length === 0 ? (
+            <p
+              style={{ color: "var(--text-dim)", fontSize: "0.9rem", padding: "8px 2px" }}
+              data-testid="empty-library"
+            >
+              No comics yet — tap ＋ to upload your first comic.
+            </p>
+          ) : (
+            <div className="lib-grid" role="list">
+              {library.series.map((s) => {
+                const fav = favSet.has(s.id);
+                const src = coverUrl(s.path, s.cover, s.coverFileId, s.coverUrl);
+                return (
+                  <div
+                    key={s.id}
+                    className="lib-grid-card"
+                    role="listitem"
+                    data-testid={`series-card-${s.id}`}
+                    onClick={() => onSelectSeries(s)}
+                  >
+                    <div className="lib-grid-cover">
+                      <img src={src} alt={s.title} loading="lazy" />
+                      <span className="lib-grid-badge">{s.issueCount} iss</span>
+                      <button
+                        className={`lib-grid-star${fav ? " on" : ""}`}
+                        aria-label={fav ? "Remove from favourites" : "Add to favourites"}
+                        onClick={(e) => handleToggleFav(e, s.id)}
+                      >
+                        {fav ? "★" : "☆"}
+                      </button>
+                    </div>
+                    <div className="lib-grid-info">
+                      <div className="lib-grid-name">{s.title}</div>
+                      <div className="lib-grid-meta">
+                        {s.issueCount} issue{s.issueCount !== 1 ? "s" : ""}
+                      </div>
+                      <div className="lib-grid-prog">
+                        <div
+                          className="lib-grid-prog-fill"
+                          style={{ width: `${Math.round(issueProgressFraction(s.id, s.issueCount) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function SeriesGrid({
-  items, favSet, onSelect, onToggleFav,
-}: {
-  items: SeriesEntry[];
-  favSet: Set<string>;
-  onSelect: (s: SeriesEntry) => void;
-  onToggleFav: (id: string) => void;
-}) {
+// ─── Sub-components ─────────────────────────────────────────────────────────
+
+function HeroBanner({ heroData, onClick }: { heroData: HeroData; onClick: () => void }) {
+  const { series, issue, pageIndex } = heroData;
+  const src = coverUrl(series.path, series.cover, series.coverFileId, series.coverUrl);
+  const pct = issue.pageCount > 1
+    ? Math.round(Math.min(pageIndex / (issue.pageCount - 1), 1) * 100)
+    : 0;
+
   return (
-    <div className="card-grid">
-      {items.map((s) => {
-        const src = coverUrl(s.path, s.cover, s.coverFileId, s.coverUrl);
-        const isFav = favSet.has(s.id);
-        return (
-          <div
-            key={s.id}
-            className="comic-card"
-            data-testid={`series-card-${s.id}`}
-            onClick={() => onSelect(s)}
-          >
-            <img className="comic-card-img" src={src} alt={s.title} loading="lazy" />
-            <div className="comic-card-overlay">
-              <div className="comic-card-title">{s.title}</div>
-              <div className="comic-card-meta">{s.issueCount} issue{s.issueCount !== 1 ? "s" : ""}</div>
-            </div>
-            <button
-              className={`comic-card-fav ${isFav ? "on" : ""}`}
-              aria-label={isFav ? "Unfavourite" : "Favourite"}
-              onClick={(e) => { e.stopPropagation(); onToggleFav(s.id); }}
-            >
-              {isFav ? "★" : "☆"}
-            </button>
-          </div>
-        );
-      })}
+    <div
+      className="lib-hero"
+      role="button"
+      aria-label={`Continue reading ${series.title}`}
+      onClick={onClick}
+    >
+      <div className="lib-hero-bg" style={{ backgroundImage: `url(${src})` }} />
+      <div className="lib-hero-gradient" />
+      <div className="lib-hero-bottom" />
+      <img className="lib-hero-cover" src={src} alt={series.title} />
+      <div className="lib-hero-info">
+        <div className="lib-hero-eyebrow">▶ Continue reading</div>
+        <div className="lib-hero-title">{series.title}</div>
+        <div className="lib-hero-meta">
+          {issue.title} · pg {pageIndex + 1} of {issue.pageCount}
+        </div>
+        <div className="lib-hero-bar">
+          <div className="lib-hero-bar-fill" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
     </div>
   );
 }
 
-function SkeletonGrid() {
+function StripCard({
+  series, showStar, onClick,
+}: {
+  series: SeriesEntry;
+  showStar: boolean;
+  onClick: () => void;
+}) {
+  const src = coverUrl(series.path, series.cover, series.coverFileId, series.coverUrl);
   return (
-    <div className="card-grid">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="comic-card skeleton" style={{ aspectRatio: "2/3" }} />
-      ))}
+    <div className="lib-strip-card" role="listitem" onClick={onClick}>
+      <div className="lib-strip-cover">
+        <img src={src} alt={series.title} loading="lazy" />
+        {showStar && <span className="lib-strip-star">★</span>}
+      </div>
+      <div className="lib-strip-name">{series.title}</div>
+    </div>
+  );
+}
+
+function LibrarySkeleton() {
+  return (
+    <div className="shell" data-testid="library-view">
+      <div className="shell-header">
+        <div className="app-logo"><span className="accent">NET</span>COMIX</div>
+      </div>
+      <div className="shell-body" style={{ padding: 0 }}>
+        <div className="lib-grid-section">
+          <div className="lib-section-header">
+            <span className="lib-section-title">Library</span>
+          </div>
+          <div className="lib-grid">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="lib-grid-card skeleton" style={{ aspectRatio: "2/3" }} />
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
