@@ -8,7 +8,7 @@ import {
 import { fitPage, snapToPanel, transformToCss, type ViewportTransform } from "../viewport";
 import { hapticLight, hapticMedium, playPageTurn, playTick } from "../feedback";
 import { loadSettings, saveSettings, type Settings } from "../settings";
-import { getProgress, setProgress } from "../storage";
+import { getProgress, setProgress, setLastRead } from "../storage";
 import { usePinchZoom } from "../hooks/usePinchZoom";
 import { HudOverlay } from "./HudOverlay";
 import "./Reader.css";
@@ -50,7 +50,10 @@ export function Reader({ issue, issuePath, onBack }: Props) {
   }, []);
 
   useEffect(() => {
-    if (issue) setProgress(issue.id, serialize(position));
+    if (issue) {
+      setProgress(issue.id, serialize(position));
+      setLastRead(issue.series, issue.id);
+    }
   }, [issue, position]);
 
   const currentPage = issue?.pages[position.pageIndex];
