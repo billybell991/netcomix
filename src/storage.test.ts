@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from "./settings";
 import { getFavorites, isFavorite, getProgress, setProgress, toggleFavorite,
-         getLastRead, setLastRead, getInProgressSeriesIds } from "./storage";
+         getLastRead, setLastRead, getInProgressSeriesIds, getSeriesStartedFraction } from "./storage";
 
 describe("settings", () => {
   beforeEach(() => localStorage.clear());
@@ -106,5 +106,31 @@ describe("getInProgressSeriesIds", () => {
     const ids = getInProgressSeriesIds(["my-series"]);
     expect(ids).toHaveLength(1);
     expect(ids[0]).toBe("my-series");
+  });
+});
+
+describe("getSeriesStartedFraction", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("returns 0 when no progress", () => {
+    expect(getSeriesStartedFraction("my-series", 4)).toBe(0);
+  });
+
+  it("returns 0 when issueCount is 0", () => {
+    setProgress("my-series-01", "3:0");
+    expect(getSeriesStartedFraction("my-series", 0)).toBe(0);
+  });
+
+  it("counts started issues over total", () => {
+    setProgress("my-series-01", "2:0");  // started
+    setProgress("my-series-02", "0:0");  // not started (pageIndex 0)
+    expect(getSeriesStartedFraction("my-series", 4)).toBe(0.25); // 1/4
+  });
+
+  it("caps at 1 even if more issues recorded than issueCount", () => {
+    setProgress("my-series-01", "2:0");
+    setProgress("my-series-02", "2:0");
+    setProgress("my-series-03", "2:0");
+    expect(getSeriesStartedFraction("my-series", 2)).toBe(1); // capped
   });
 });

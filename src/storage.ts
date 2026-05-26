@@ -103,3 +103,18 @@ export function getInProgressSeriesIds(allSeriesIds: string[]): string[] {
   }
   return Array.from(inProgress);
 }
+
+// ─── Series-level progress fraction ──────────────────────────────────────
+// Returns the fraction (0–1) of a series' issues that have been started
+// (pageIndex > 0). Uses the same prefix-matching convention as getInProgressSeriesIds.
+
+export function getSeriesStartedFraction(seriesId: string, issueCount: number): number {
+  if (issueCount === 0) return 0;
+  const progressMap = readProgress();
+  let started = 0;
+  for (const [issueId, progress] of Object.entries(progressMap)) {
+    if (!issueId.startsWith(seriesId + "-") && issueId !== seriesId) continue;
+    if (parseInt(progress.split(":")[0], 10) > 0) started++;
+  }
+  return Math.min(started / issueCount, 1);
+}

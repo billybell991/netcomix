@@ -3,7 +3,7 @@ import type { IssueIndexEntry, Library, SeriesEntry } from "../types";
 import { coverUrl, fetchSeries } from "../library";
 import {
   getFavorites, getInProgressSeriesIds, getLastRead, getProgress,
-  toggleFavorite, type LastRead,
+  getSeriesStartedFraction, toggleFavorite, type LastRead,
 } from "../storage";
 import "./LibraryView.css";
 
@@ -19,18 +19,6 @@ interface Props {
   onSelectSeries: (s: SeriesEntry) => void;
   onResumeReading: (series: SeriesEntry, issue: IssueIndexEntry) => void;
   onOpenAdmin?: () => void;
-}
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-/** Progress fraction (0–1) for a single issue based on stored progress. */
-function issueProgressFraction(issueId: string, pageCount: number): number {
-  if (pageCount <= 1) return 0;
-  const prog = getProgress(issueId);
-  if (!prog) return 0;
-  const pageIndex = parseInt(prog.split(":")[0], 10);
-  if (isNaN(pageIndex) || pageIndex <= 0) return 0;
-  return Math.min(pageIndex / (pageCount - 1), 1);
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -185,7 +173,7 @@ export function LibraryView({ library, onSelectSeries, onResumeReading, onOpenAd
                       <div className="lib-grid-prog">
                         <div
                           className="lib-grid-prog-fill"
-                          style={{ width: `${Math.round(issueProgressFraction(s.id, s.issueCount) * 100)}%` }}
+                          style={{ width: `${Math.round(getSeriesStartedFraction(s.id, s.issueCount) * 100)}%` }}
                         />
                       </div>
                     </div>
@@ -242,11 +230,15 @@ function StripCard({
   onClick: () => void;
 }) {
   const src = coverUrl(series.path, series.cover, series.coverFileId, series.coverUrl);
+  const progPct = Math.round(getSeriesStartedFraction(series.id, series.issueCount) * 100);
   return (
     <div className="lib-strip-card" role="listitem" onClick={onClick}>
       <div className="lib-strip-cover">
         <img src={src} alt={series.title} loading="lazy" />
         {showStar && <span className="lib-strip-star">★</span>}
+      </div>
+      <div className="lib-strip-prog">
+        <div className="lib-strip-prog-fill" style={{ width: `${progPct}%` }} />
       </div>
       <div className="lib-strip-name">{series.title}</div>
     </div>
