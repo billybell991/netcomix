@@ -1,0 +1,118 @@
+/* ─── Series view enhancements ───────────────────────────────────────────── */
+
+/* Series-level progress bar inside the hero */
+.ser-hero-prog {
+  height: 2px;
+  background: var(--surface-3);
+  border-radius: 1px;
+  margin-top: 8px;
+  max-width: 180px;
+}
+.ser-hero-prog-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 1px;
+  transition: width 0.4s ease;
+}
+
+/* Star button in header */
+.ser-star-btn {
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 8px;
+  transition: transform 0.15s, color 0.15s;
+  color: var(--text-muted);
+}
+.ser-star-btn:active { transform: scale(1.25); }
+.ser-star-btn.on { color: #ffd60a; }
+
+/* Issue list */
+.issue-list {
+  padding: 10px 12px calc(var(--safe-bottom) + 28px);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.issue-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--surface-1);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  padding: 8px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.issue-row:active { background: var(--surface-2); }
+.issue-row.issue-row--active {
+  background: rgba(255, 55, 95, 0.07);
+  border-color: rgba(255, 55, 95, 0.2);
+}
+
+.issue-thumb {
+  flex: 0 0 34px;
+  height: 48px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+.issue-thumb img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.issue-info {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+.issue-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+  /* wrap up to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.issue-meta {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  margin-top: 3px;
+}
+.issue-prog {
+  height: 1.5px;
+  background: var(--surface-3);
+  border-radius: 1px;
+  margin-top: 5px;
+}
+.issue-prog-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 1px;
+}
+
+.issue-badge {
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-top: 3px;
+  align-self: flex-start;
+}
+.issue-badge--reading {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+.issue-badge--new {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
