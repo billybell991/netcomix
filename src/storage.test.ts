@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from "./settings";
-import { getFavorites, isFavorite, getProgress, setProgress, toggleFavorite } from "./storage";
+import { getFavorites, isFavorite, getProgress, setProgress, toggleFavorite,
+         getLastRead, setLastRead, getInProgressSeriesIds } from "./storage";
 
 describe("settings", () => {
   beforeEach(() => localStorage.clear());
@@ -48,5 +49,62 @@ describe("favorites + progress", () => {
     expect(getProgress("x")).toBe("3:2");
     setProgress("x", "4:0");
     expect(getProgress("x")).toBe("4:0");
+  });
+});
+
+describe("lastRead", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("returns null when nothing saved", () => {
+    expect(getLastRead()).toBeNull();
+  });
+
+  it("persists and reloads", () => {
+    setLastRead("my-series", "my-series-01");
+    expect(getLastRead()).toEqual({ seriesId: "my-series", issueId: "my-series-01" });
+  });
+
+  it("overwrites previous value", () => {
+    setLastRead("series-a", "series-a-01");
+    setLastRead("series-b", "series-b-01");
+    expect(getLastRead()).toEqual({ seriesId: "series-b", issueId: "series-b-01" });
+  });
+
+  it("returns null when localStorage has corrupt data", () => {
+    localStorage.setItem("netcomix.lastread.v1", "not-json{{");
+    expect(getLastRead()).toBeNull();
+  });
+});
+
+describe("getInProgressSeriesIds", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("returns empty array when no progress", () => {
+    expect(getInProgressSeriesIds(["my-series"])).toEqual([]);
+  });
+
+  it("excludes series whose only progress is page 0", () => {
+    setProgress("my-series-01", "0:-1");
+    expect(getInProgressSeriesIds(["my-series"])).toEqual([]);
+  });
+
+  it("includes series where an issue has pageIndex > 0", () => {
+    setProgress("my-series-01", "3:1");
+    expect(getInProgressSeriesIds(["my-series"])).toContain("my-series");
+  });
+
+  it("matches issue to series by prefix + hyphen", () => {
+    setProgress("tales-from-the-crypt-v2-01-2007", "5:0");
+    const ids = getInProgressSeriesIds(["tales-from-the-crypt-v2", "other-series"]);
+    expect(ids).toContain("tales-from-the-crypt-v2");
+    expect(ids).not.toContain("other-series");
+  });
+
+  it("deduplicates — multiple issues in same series count once", () => {
+    setProgress("my-series-01", "2:0");
+    setProgress("my-series-02", "4:0");
+    const ids = getInProgressSeriesIds(["my-series"]);
+    expect(ids).toHaveLength(1);
+    expect(ids[0]).toBe("my-series");
   });
 });

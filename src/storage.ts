@@ -45,3 +45,61 @@ export function setProgress(issueId: string, serialized: string): void {
   map[issueId] = serialized;
   try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(map)); } catch { /* ignore */ }
 }
+
+// ─── Last-read tracking ───────────────────────────────────────────────────
+
+const LAST_READ_KEY = "netcomix.lastread.v1";
+
+export interface LastRead {
+  seriesId: string;
+  issueId: string;
+}
+
+export function getLastRead(): LastRead | null {
+  try {
+    const raw = localStorage.getItem(LAST_READ_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      "seriesId" in parsed &&
+      "issueId" in parsed &&
+      typeof (parsed as LastRead).seriesId === "string" &&
+      typeof (parsed as LastRead).issueId === "string"
+    ) {
+      return parsed as LastRead;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function setLastRead(seriesId: string, issueId: string): void {
+  try {
+    localStorage.setItem(LAST_READ_KEY, JSON.stringify({ seriesId, issueId }));
+  } catch { /* ignore */ }
+}
+
+// ─── In-progress series detection ────────────────────────────────────────
+// A series is "in progress" if at least one of its issues has pageIndex > 0.
+// Issues are matched to series by the naming convention used by the harvester:
+// issue slugs start with the series slug followed by a hyphen
+// (e.g. "tales-from-the-crypt-v2-01" starts with "tales-from-the-crypt-v2-").
+
+export function getInProgressSeriesIds(allSeriesIds: string[]): string[] {
+  const progressMap = readProgress();
+  const inProgress = new Set<string>();
+  for (const [issueId, progress] of Object.entries(progressMap)) {
+    const pageIndex = parseInt(progress.split(":")[0], 10);
+    if (isNaN(pageIndex) || pageIndex <= 0) continue;
+    for (const seriesId of allSeriesIds) {
+      if (issueId.startsWith(seriesId + "-") || issueId === seriesId) {
+        inProgress.add(seriesId);
+        break;
+      }
+    }
+  }
+  return Array.from(inProgress);
+}
