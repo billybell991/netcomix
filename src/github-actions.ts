@@ -193,30 +193,3 @@ export async function commitComicsToRepo(
   await pushEntries(entries, msg, (pct) => onProgress?.(0.88 + pct * 0.12));
 }
 
-export async function triggerRedetect(issueId: string): Promise<void> {
-  const { ghOwner, ghRepo } = getConfig();
-  const res = await fetch(
-    `${GH_API}/repos/${ghOwner}/${ghRepo}/actions/workflows/redetect.yml/dispatches`,
-    {
-      method: "POST",
-      headers: { ...authHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ ref: "main", inputs: { issue_id: issueId } }),
-    }
-  );
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Re-detect dispatch failed: ${res.status} ${body}`);
-  }
-}
-
-export async function latestRedetectRun(): Promise<WorkflowRun | null> {
-  if (!isGithubConfigured()) return null;
-  const { ghOwner, ghRepo } = getConfig();
-  const res = await fetch(
-    `${GH_API}/repos/${ghOwner}/${ghRepo}/actions/workflows/redetect.yml/runs?per_page=1`,
-    { headers: authHeaders() }
-  );
-  if (!res.ok) return null;
-  const data = (await res.json()) as { workflow_runs: WorkflowRun[] };
-  return data.workflow_runs[0] ?? null;
-}

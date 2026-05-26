@@ -78,7 +78,7 @@ export function applyZoneGrid(manifest: IssueManifest): IssueManifest {
 }
 
 export async function fetchIssue(issuePath: string, _issue?: IssueIndexEntry): Promise<IssueManifest> {
-  return applyZoneGrid(await fetchJson<IssueManifest>(`${COMICS_BASE}${issuePath}/issue.json`));
+  return fetchJson<IssueManifest>(`${COMICS_BASE}${issuePath}/issue.json`);
 }
 
 /** URL for a page image — static path. */

@@ -6,7 +6,6 @@ import { SeriesView } from "./components/SeriesView";
 import { Reader } from "./components/Reader";
 import { SetupView } from "./components/SetupView";
 import { AdminView } from "./components/AdminView";
-import { getFavorites } from "./storage";
 import "./App.css";
 
 type Route =
@@ -22,11 +21,9 @@ export function App() {
   const [seriesIndex, setSeriesIndex] = useState<SeriesIndex | null>(null);
   const [issueData, setIssueData] = useState<Awaited<ReturnType<typeof fetchIssue>> | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [favorites, setFavorites] = useState<string[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    setFavorites(getFavorites());
     setError(null);
     fetchLibrary()
       .then(setLibrary)
@@ -65,19 +62,13 @@ export function App() {
   if (error) {
     return (
       <div className="empty-state" data-testid="error-state">
-        <h1>NetComix</h1>
-        <p>Something went wrong.</p>
+        <h1><span className="accent">Net</span>Comix</h1>
+        <p>Something went wrong loading the library.</p>
         <pre>{error}</pre>
-        <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12, flexWrap: "wrap" }}>
-          <button className="back-btn" onClick={() => setRoute({ name: "setup" })} data-testid="goto-setup">
-            Open Setup
-          </button>
-          <button className="back-btn" onClick={() => setRoute({ name: "admin" })} data-testid="goto-admin">
-            Open Admin
-          </button>
-          <button className="back-btn" onClick={() => { setError(null); setReloadKey((k) => k + 1); }}>
-            Retry
-          </button>
+        <div className="btn-row">
+          <button className="btn" onClick={() => setRoute({ name: "setup" })}>Setup</button>
+          <button className="btn" onClick={() => setRoute({ name: "admin" })}>Upload</button>
+          <button className="btn" onClick={() => { setError(null); setReloadKey((k) => k + 1); }}>Retry</button>
         </div>
       </div>
     );
@@ -87,9 +78,7 @@ export function App() {
     return (
       <LibraryView
         library={library}
-        favorites={favorites}
         onSelectSeries={(s) => setRoute({ name: "series", series: s })}
-        onFavoritesChanged={setFavorites}
         onOpenAdmin={() => setRoute({ name: "admin" })}
       />
     );

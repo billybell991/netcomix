@@ -3,22 +3,18 @@
 export type ButtonPosition = "corners" | "sides";
 export type Orientation = "auto" | "portrait" | "landscape";
 export type HudTrigger = "center-tap" | "long-press" | "both";
+export type TransitionStyle = "cinematic" | "fade" | "instant";
 
 export interface Settings {
-  /** Ghost button opacity 0..1 (0 = invisible hit zones) */
   buttonOpacity: number;
-  /** Where the next/back hit zones live */
   buttonPosition: ButtonPosition;
-  /** Lock orientation? */
   orientation: Orientation;
-  /** How to summon the HUD */
   hudTrigger: HudTrigger;
-  /** Play page-turn / panel-tick sounds */
   sounds: boolean;
-  /** Haptic feedback */
   haptics: boolean;
-  /** Color-matched blurred letterbox backgrounds */
   colorMatchBackground: boolean;
+  transitionStyle: TransitionStyle;
+  panelSnap: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -29,9 +25,11 @@ export const DEFAULT_SETTINGS: Settings = {
   sounds: true,
   haptics: true,
   colorMatchBackground: true,
+  transitionStyle: "cinematic",
+  panelSnap: true,
 };
 
-const KEY = "netcomix.settings.v1";
+const KEY = "netcomix.settings.v2";
 
 export function loadSettings(): Settings {
   try {
@@ -47,7 +45,5 @@ export function loadSettings(): Settings {
 export function saveSettings(s: Settings): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(s));
-  } catch {
-    /* quota / private mode — ignore */
-  }
+  } catch { /* quota/private mode */ }
 }
