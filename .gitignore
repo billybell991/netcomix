@@ -50,3 +50,6 @@ scan-log.txt
 harvester/debug_*.jpg
 harvester/test_page*.py
 
+
+# Brainstorm session files
+.superpowers/
