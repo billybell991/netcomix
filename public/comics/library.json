@@ -1,1 +1,12 @@
-﻿{"generatedAt":"","series":[]}
+{
+  "generatedAt": "2026-05-26T01:10:28.954041+00:00",
+  "series": [
+    {
+      "id": "tales-from-the-crypt-v2",
+      "title": "Tales from the Crypt v2",
+      "cover": "page-001.jpg",
+      "issueCount": 4,
+      "path": "tales-from-the-crypt-v2"
+    }
+  ]
+}
