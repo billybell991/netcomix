@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function SeriesView({ series, index, onBack, onSelectIssue, coverUrl: cvr }: Props) {
-  const heroSrc = cvr(series.cover, series.coverFileId, series.coverUrl);
+  const heroSrc = cvr(`${series.path}/${series.cover}`, series.coverFileId, series.coverUrl);
 
   return (
     <div className="shell" data-testid="series-view">

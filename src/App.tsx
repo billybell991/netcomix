@@ -6,6 +6,7 @@ import { SeriesView } from "./components/SeriesView";
 import { Reader } from "./components/Reader";
 import { SetupView } from "./components/SetupView";
 import { AdminView } from "./components/AdminView";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./App.css";
 
 type Route =
@@ -96,11 +97,18 @@ export function App() {
     );
   }
 
+  // Only pass issue data when it matches the requested issue — prevents Reader
+  // from briefly rendering with a stale previous issue during navigation.
+  const validIssue = issueData?.id === route.issue.id ? issueData : null;
+
   return (
-    <Reader
-      issue={issueData}
-      issuePath={route.issue.path}
-      onBack={() => setRoute({ name: "series", series: route.series })}
-    />
+    <ErrorBoundary key={route.issue.id} onReset={() => setRoute({ name: "library" })}>
+      <Reader
+        key={route.issue.id}
+        issue={validIssue}
+        issuePath={route.issue.path}
+        onBack={() => setRoute({ name: "series", series: route.series })}
+      />
+    </ErrorBoundary>
   );
 }

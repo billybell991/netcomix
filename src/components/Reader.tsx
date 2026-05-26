@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { IssueManifest } from "../types";
 import { pageUrl } from "../library";
 import {
@@ -36,6 +36,7 @@ export function Reader({ issue, issuePath, onBack }: Props) {
   const [debugOverlay, setDebugOverlay] = useState(false);
   const [fadeState, setFadeState] = useState<FadeState>("visible");
   const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null);
+  const stageRefCallback = useCallback((el: HTMLDivElement | null) => { setStageEl(el); }, []);
 
   // Swipe tracking
   const swipeRef = useRef<{ x: number; y: number; t: number; touches: number } | null>(null);
@@ -64,6 +65,11 @@ export function Reader({ issue, issuePath, onBack }: Props) {
 
   const pinch = usePinchZoom(stageEl, snapTransform);
   const effectiveTransform = pinch.active && pinch.transform ? pinch.transform : snapTransform;
+
+  // Restore saved progress when a new issue loads
+  useEffect(() => {
+    if (issue) setPosition(deserialize(getProgress(issue.id)));
+  }, [issue?.id]);
 
   // Pre-cache next page
   useEffect(() => {
@@ -175,7 +181,7 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     >
       <div className="reader-bg" style={bgStyle} data-testid="reader-bg" />
 
-      <div className="reader-stage" ref={setStageEl}>
+      <div className="reader-stage" ref={stageRefCallback}>
         <img
           className={imgClass}
           src={pageUrl(issuePath, currentPage)}
