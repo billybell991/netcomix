@@ -70,6 +70,9 @@ export function LibraryView({ library, onSelectSeries, onResumeReading, onOpenAd
       {/* Header */}
       <div className="shell-header">
         <div className="app-logo"><span className="accent">NET</span>COMIX</div>
+        <span style={{ fontSize: "0.5rem", color: "var(--text-muted)", fontWeight: 400, letterSpacing: 0, lineHeight: 1, marginRight: "auto" }}>
+          {__COMMIT_HASH__}
+        </span>
         {onOpenAdmin && (
           <button
             className="icon-btn"

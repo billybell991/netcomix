@@ -2,6 +2,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
+import { execSync } from "node:child_process";
+
+const gitHash = (() => {
+  try { return execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim(); }
+  catch { return "dev"; }
+})();
 
 // GitHub Pages serves from /netcomix/ when using project pages.
 // Allow override via env (e.g. for custom domain).
@@ -9,6 +15,9 @@ const base = process.env.VITE_BASE ?? "/netcomix/";
 
 export default defineConfig({
   base,
+  define: {
+    __COMMIT_HASH__: JSON.stringify(gitHash),
+  },
   resolve: {
     alias: { "@": path.resolve(__dirname, "src") },
   },
