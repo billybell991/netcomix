@@ -18,7 +18,7 @@ describe("settings", () => {
   });
 
   it("merges defaults for missing keys (forward compat)", () => {
-    localStorage.setItem("netcomix.settings.v1", JSON.stringify({ sounds: false }));
+    localStorage.setItem("netcomix.settings.v2", JSON.stringify({ sounds: false }));
     const loaded = loadSettings();
     expect(loaded.sounds).toBe(false);
     expect(loaded.buttonOpacity).toBe(DEFAULT_SETTINGS.buttonOpacity);

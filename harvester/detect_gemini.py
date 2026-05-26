@@ -55,6 +55,9 @@ def detect_panels_gemini(image_path: Path, width: int, height: int) -> Optional[
         return None
 
     try:
+        # google-genai prefers GOOGLE_API_KEY env var over the explicit api_key param;
+        # pin our key so we don't accidentally use a stale ambient GOOGLE_API_KEY.
+        os.environ["GOOGLE_API_KEY"] = api_key
         client = genai.Client(api_key=api_key)
 
         img_bytes = image_path.read_bytes()
