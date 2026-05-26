@@ -80,6 +80,7 @@ export function App() {
       <LibraryView
         library={library}
         onSelectSeries={(s) => setRoute({ name: "series", series: s })}
+        onResumeReading={(series, issue) => setRoute({ name: "reader", series, issue })}
         onOpenAdmin={() => setRoute({ name: "admin" })}
       />
     );
