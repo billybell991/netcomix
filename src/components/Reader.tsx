@@ -83,6 +83,15 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     if (next) { const img = new Image(); img.src = pageUrl(issuePath, next); }
   }, [issue, position.pageIndex, issuePath]);
 
+  // Fade transition: "out"→"in" both produce the same CSS class, so no CSS transition
+  // fires between them. When fadeState reaches "in", the new page has rendered behind
+  // the overlay — kick off the fade-out via rAF. MUST be before early return (Rules of Hooks).
+  useEffect(() => {
+    if (fadeState !== "in") return;
+    const id = requestAnimationFrame(() => setFadeState("visible"));
+    return () => cancelAnimationFrame(id);
+  }, [fadeState]);
+
   if (!issue || !currentPage) {
     return (
       <div className="empty-state" data-testid="reader-loading">
@@ -124,17 +133,8 @@ export function Reader({ issue, issuePath, onBack }: Props) {
       pendingNavRef.current = null;
       setFadeState("in");
     }
-    // "in" → "visible" is handled by the useEffect below, because both "out" and "in"
-    // produce the same CSS class (fading), so no transition fires between them.
+    // "in" → "visible" is handled by the useEffect above the early return guard.
   };
-
-  // When fadeState reaches "in", the new page has rendered behind the overlay.
-  // Kick off the fade-out via rAF so the browser gets a chance to paint first.
-  useEffect(() => {
-    if (fadeState !== "in") return;
-    const id = requestAnimationFrame(() => setFadeState("visible"));
-    return () => cancelAnimationFrame(id);
-  }, [fadeState]);
 
   // Swipe gesture
   const handlePointerDown = (e: React.PointerEvent) => {
