@@ -79,7 +79,7 @@ export function HudOverlay({
         </SettingRow>
 
         <SettingRow label="Sounds">
-          <Toggle checked={settings.sounds} onChange={(v) => set("sounds", v)} />
+          <Toggle checked={settings.sounds} onChange={(v) => set("sounds", v)} testId="sounds-toggle" />
         </SettingRow>
 
         <SettingRow label="Haptics">
@@ -103,12 +103,17 @@ function SettingRow({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange, testId }: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  testId?: string;
+}) {
   return (
     <button
       className={`toggle ${checked ? "on" : ""}`}
       onClick={() => onChange(!checked)}
       aria-pressed={checked}
+      data-testid={testId}
     >
       <div className="toggle-thumb" />
     </button>

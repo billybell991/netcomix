@@ -161,7 +161,7 @@ export function LibraryView({ library, onSelectSeries, onResumeReading, onOpenAd
                       <img src={src} alt={s.title} loading="lazy" />
                       <span className="lib-grid-badge">{s.issueCount} iss</span>
                       <button
-                        className={`lib-grid-star${fav ? " on" : ""}`}
+                        className={`lib-grid-star card-fav${fav ? " on" : ""}`}
                         aria-label={fav ? "Remove from favourites" : "Add to favourites"}
                         onClick={(e) => handleToggleFav(e, s.id)}
                       >

@@ -49,24 +49,36 @@ test.describe("NetComix critical path", () => {
     await expect(page.getByTestId("prev-btn")).toBeVisible();
   });
 
-  test("snap loop: cover → next page → first panel → second panel", async ({ page }) => {
+  test("snap loop: cover → navigate to first panelled page → panel snap", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("series-card-tales-from-the-crypt-v2").click();
     await page.getByTestId("issue-card-tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero").click();
     const img = page.getByTestId("page-image");
-    // Cover (page 0 full)
+
+    // Cover (page index 0, 0 panels) — full view
     const srcCover = await img.getAttribute("src");
-    // Next → page 2 full (different src — same fit transform is fine)
+
+    // Next → page index 1 (page-002.jpg, 0 panels) — full view, src changes
+    await page.getByTestId("next-btn").click();
+    await page.waitForTimeout(450);
+    const srcPage1 = await img.getAttribute("src");
+    expect(srcPage1).not.toBe(srcCover);
+
+    // Next → page index 2 (page-003.jpg, 5 panels) — full view, src changes again
     await page.getByTestId("next-btn").click();
     await page.waitForTimeout(450);
     const srcPage2 = await img.getAttribute("src");
-    expect(srcPage2).not.toBe(srcCover);
+    expect(srcPage2).not.toBe(srcPage1);
     const tFull = await img.evaluate((el) => (el as HTMLElement).style.transform);
-    // Next → snap to first panel on page 2 — src stays same, transform changes
+
+    // Next → snap to first panel on page index 2 — src stays same, transform changes
     await page.getByTestId("next-btn").click();
     await page.waitForTimeout(450);
+    const srcPanel = await img.getAttribute("src");
+    expect(srcPanel).toBe(srcPage2); // same page
     const tPanel = await img.evaluate((el) => (el as HTMLElement).style.transform);
     expect(tPanel).not.toBe(tFull);
+
     // Next → second panel — transform changes again
     await page.getByTestId("next-btn").click();
     await page.waitForTimeout(450);
