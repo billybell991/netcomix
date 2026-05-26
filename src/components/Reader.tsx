@@ -41,6 +41,8 @@ export function Reader({ issue, issuePath, onBack }: Props) {
   // Swipe tracking
   const swipeRef = useRef<{ x: number; y: number; t: number; touches: number } | null>(null);
   const pendingNavRef = useRef<(() => void) | null>(null);
+  // Double-tap timing — must be before early return to satisfy Rules of Hooks
+  const lastTapRef = useRef(0);
 
   useEffect(() => {
     const onResize = () => setScreenSize({ width: window.innerWidth, height: window.innerHeight });
@@ -143,7 +145,6 @@ export function Reader({ issue, issuePath, onBack }: Props) {
   };
 
   // Double-tap for HUD
-  const lastTapRef = useRef(0);
   const handleTap = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest("[data-nohud]")) return;
