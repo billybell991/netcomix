@@ -123,10 +123,18 @@ export function Reader({ issue, issuePath, onBack }: Props) {
       pendingNavRef.current?.();
       pendingNavRef.current = null;
       setFadeState("in");
-    } else if (fadeState === "in") {
-      setFadeState("visible");
     }
+    // "in" → "visible" is handled by the useEffect below, because both "out" and "in"
+    // produce the same CSS class (fading), so no transition fires between them.
   };
+
+  // When fadeState reaches "in", the new page has rendered behind the overlay.
+  // Kick off the fade-out via rAF so the browser gets a chance to paint first.
+  useEffect(() => {
+    if (fadeState !== "in") return;
+    const id = requestAnimationFrame(() => setFadeState("visible"));
+    return () => cancelAnimationFrame(id);
+  }, [fadeState]);
 
   // Swipe gesture
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -168,6 +176,11 @@ export function Reader({ issue, issuePath, onBack }: Props) {
   const totalPages = issue.pages.length;
   const progressPct = ((position.pageIndex + 1) / totalPages) * 100;
   const panelCount = settings.panelSnap ? currentPage.panels.length : 0;
+  const hudSubtitle = isCover(position)
+    ? "Cover"
+    : position.panelIndex >= 0 && panelCount > 0
+      ? `Page ${position.pageIndex + 1} of ${totalPages} · Panel ${position.panelIndex + 1} of ${panelCount}`
+      : `Page ${position.pageIndex + 1} of ${totalPages}`;
   const opacity = Math.max(settings.buttonOpacity, 0.02);
   const navClass = settings.buttonPosition === "corners" ? "corner" : "side";
   const imgClass = [
@@ -260,25 +273,23 @@ export function Reader({ issue, issuePath, onBack }: Props) {
         );
       })}
 
-      {/* Dev toolbar */}
-      <div className="dev-toolbar" data-nohud>
-        <button
-          className={`dev-btn${debugOverlay ? " active" : ""}`}
-          title="Panel debug overlay"
-          onClick={(e) => { e.stopPropagation(); setDebugOverlay((v) => !v); }}
-        >🔲</button>
-      </div>
+      {/* Dev toolbar — only in development builds */}
+      {import.meta.env.DEV && (
+        <div className="dev-toolbar" data-nohud>
+          <button
+            className={`dev-btn${debugOverlay ? " active" : ""}`}
+            title="Panel debug overlay"
+            onClick={(e) => { e.stopPropagation(); setDebugOverlay((v) => !v); }}
+          >🔲</button>
+        </div>
+      )}
 
       {/* HUD */}
       {hudOpen && (
         <HudOverlay
           title={issue.title}
-          subtitle={isCover(position) ? "Cover" : `Page ${position.pageIndex + 1} of ${totalPages}`}
+          subtitle={hudSubtitle}
           progressPct={progressPct}
-          pageIndex={position.pageIndex}
-          totalPages={totalPages}
-          panelIndex={position.panelIndex}
-          panelCount={panelCount}
           settings={settings}
           onChangeSettings={updateSettings}
           onClose={() => setHudOpen(false)}

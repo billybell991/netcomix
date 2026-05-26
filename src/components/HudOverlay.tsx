@@ -4,10 +4,6 @@ interface Props {
   title: string;
   subtitle: string;
   progressPct: number;
-  pageIndex: number;
-  totalPages: number;
-  panelIndex: number;
-  panelCount: number;
   settings: Settings;
   onChangeSettings: (s: Settings) => void;
   onClose: () => void;
@@ -15,8 +11,7 @@ interface Props {
 }
 
 export function HudOverlay({
-  title, progressPct,
-  pageIndex, totalPages, panelIndex, panelCount,
+  title, subtitle, progressPct,
   settings, onChangeSettings, onClose, onBack,
 }: Props) {
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) =>
@@ -29,7 +24,7 @@ export function HudOverlay({
 
       <div className="hud-nav">
         <button className="back-btn" data-testid="hud-back" onClick={onBack}>
-          ← Library
+          ← Back
         </button>
         <button className="hud-close-btn" data-testid="hud-close" onClick={onClose}>✕</button>
       </div>
@@ -37,10 +32,7 @@ export function HudOverlay({
       {/* Progress section */}
       <div className="hud-progress-section">
         <div className="hud-title">{title}</div>
-        <div className="hud-subtitle">
-          Page {pageIndex + 1} of {totalPages}
-          {panelIndex >= 0 && panelCount > 0 && ` · Panel ${panelIndex + 1} of ${panelCount}`}
-        </div>
+        <div className="hud-subtitle">{subtitle}</div>
         <div className="hud-bar">
           <div className="hud-bar-fill" style={{ width: `${progressPct}%` }} />
         </div>
