@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { IssueManifest, PageManifest, Panel } from "./types";
-import { applyZoneGrid } from "./library";
+import { applyZoneGrid, normalizeIssueManifest } from "./library";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -198,3 +198,37 @@ describe("applyZoneGrid — edge cases", () => {
   });
 });
 
+describe("normalizeIssueManifest", () => {
+  it("removes row overview panels that would re-center backwards within the same row", () => {
+    const cover = makePage(W, H, [makePanel(0, 0, W, H)]);
+    const rowOverview = makePanel(40, 1180, 1080, 520);
+    const leftPanel = makePanel(40, 1180, 240, 520);
+    const rightPanel = makePanel(620, 1180, 500, 520);
+    const page = makePage(W, H, [
+      makePanel(40, 60, 1080, 520),
+      rowOverview,
+      leftPanel,
+      rightPanel,
+    ]);
+
+    const result = normalizeIssueManifest(makeIssue([cover, page]));
+
+    expect(result.pages[0].panels).toEqual([]);
+    expect(result.pages[1].panels).toEqual([
+      makePanel(40, 60, 1080, 520),
+      leftPanel,
+      rightPanel,
+    ]);
+  });
+
+  it("keeps ordinary left-to-right rows intact", () => {
+    const cover = makePage(W, H, []);
+    const leftPanel = makePanel(40, 1180, 240, 520);
+    const rightPanel = makePanel(620, 1180, 500, 520);
+    const page = makePage(W, H, [rightPanel, leftPanel]);
+
+    const result = normalizeIssueManifest(makeIssue([cover, page]));
+
+    expect(result.pages[1].panels).toEqual([leftPanel, rightPanel]);
+  });
+});

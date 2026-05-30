@@ -844,43 +844,6 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     if len(panels) == 1 and (panels[0].w * panels[0].h) / page_area < 0.15:
         panels = []
 
-    # ── Post-process: insert row-overview panels before each multi-panel row ─
-    # For horizontal rows containing 2+ sub-panels, prepend a "row overview"
-    # panel covering the entire row's bounding box.  This gives readers context
-    # (the full strip) before zooming into each individual panel — the same
-    # reading rhythm used in most comic reader apps.
-    if len(panels) >= 2:
-        row_groups: List[List[Panel]] = []
-        cur_group: List[Panel] = [panels[0]]
-        for p in panels[1:]:
-            if p.y // bucket == cur_group[0].y // bucket:
-                cur_group.append(p)
-            else:
-                row_groups.append(cur_group)
-                cur_group = [p]
-        row_groups.append(cur_group)
-
-        panels_with_overviews: List[Panel] = []
-        for grp in row_groups:
-            if len(grp) >= 2:
-                rx0 = min(p.x for p in grp)
-                ry0 = min(p.y for p in grp)
-                rx1 = max(p.x + p.w for p in grp)
-                ry1 = max(p.y + p.h for p in grp)
-                rov_w, rov_h = rx1 - rx0, ry1 - ry0
-                max_sub_w = max(p.w for p in grp)
-                # Only add the overview when the combined row is meaningfully
-                # wider than any single sub-panel (confirms it's a real
-                # multi-panel row, not a duplicate detection), and it doesn't
-                # swallow almost the whole page (which would be a splash).
-                if rov_w > max_sub_w * 1.1 and (rov_w * rov_h) / page_area < 0.80:
-                    panels_with_overviews.append(
-                        Panel(rx0, ry0, rov_w, rov_h,
-                              rx0 + rov_w // 2, ry0 + rov_h // 2)
-                    )
-            panels_with_overviews.extend(grp)
-        panels = panels_with_overviews
-
     # Dominant color (mean of a downsampled copy — cheap and good enough for
     # the reader's letterbox background tint).
     small = cv2.resize(img, (50, 75))

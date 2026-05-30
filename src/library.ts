@@ -31,6 +31,77 @@ export async function fetchSeries(seriesPath: string): Promise<SeriesIndex> {
   return fetchJson<SeriesIndex>(`${COMICS_BASE}${seriesPath}/series.json`);
 }
 
+const ROW_BUCKET_RATIO = 0.08;
+const ROW_BUCKET_MIN = 20;
+const OVERVIEW_WIDTH_RATIO = 1.1;
+const OVERVIEW_MAX_PAGE_AREA = 0.8;
+
+function sortPanelsInReadingOrder(panels: Panel[], pageHeight: number): Panel[] {
+  const bucket = Math.max(Math.floor(pageHeight * ROW_BUCKET_RATIO), ROW_BUCKET_MIN);
+  return [...panels].sort((a, b) => {
+    const rowDiff = Math.floor(a.y / bucket) - Math.floor(b.y / bucket);
+    return rowDiff !== 0 ? rowDiff : a.x - b.x;
+  });
+}
+
+function containsPanel(outer: Panel, inner: Panel): boolean {
+  if (outer === inner) return false;
+  return outer.x <= inner.x
+    && outer.y <= inner.y
+    && outer.x + outer.w >= inner.x + inner.w
+    && outer.y + outer.h >= inner.y + inner.h;
+}
+
+function normalizePagePanels(page: PageManifest): Panel[] {
+  if (page.panels.length < 3 || page.width <= 0 || page.height <= 0) return page.panels;
+
+  const panels = sortPanelsInReadingOrder(page.panels, page.height);
+  const bucket = Math.max(Math.floor(page.height * ROW_BUCKET_RATIO), ROW_BUCKET_MIN);
+  const pageArea = page.width * page.height;
+  const normalized: Panel[] = [];
+
+  for (let index = 0; index < panels.length;) {
+    const group: Panel[] = [panels[index]];
+    const row = Math.floor(panels[index].y / bucket);
+    index += 1;
+
+    while (index < panels.length && Math.floor(panels[index].y / bucket) === row) {
+      group.push(panels[index]);
+      index += 1;
+    }
+
+    if (group.length >= 3) {
+      const [candidate, ...rest] = group;
+      const containedPanels = rest.filter((panel) => containsPanel(candidate, panel));
+      const maxChildWidth = containedPanels.reduce((max, panel) => Math.max(max, panel.w), 0);
+      const candidateArea = candidate.w * candidate.h;
+
+      if (
+        containedPanels.length >= 2
+        && candidate.w > maxChildWidth * OVERVIEW_WIDTH_RATIO
+        && candidateArea / pageArea < OVERVIEW_MAX_PAGE_AREA
+      ) {
+        normalized.push(...rest);
+        continue;
+      }
+    }
+
+    normalized.push(...group);
+  }
+
+  return normalized;
+}
+
+export function normalizeIssueManifest(manifest: IssueManifest): IssueManifest {
+  return {
+    ...manifest,
+    pages: manifest.pages.map((page, index) => ({
+      ...page,
+      panels: index === 0 ? [] : normalizePagePanels(page),
+    })),
+  };
+}
+
 /**
  * Replace all panel data with a fixed 2-column × 3-row zone grid:
  *   TL → TR → ML → MR → BL → BR
@@ -78,7 +149,8 @@ export function applyZoneGrid(manifest: IssueManifest): IssueManifest {
 }
 
 export async function fetchIssue(issuePath: string, _issue?: IssueIndexEntry): Promise<IssueManifest> {
-  return fetchJson<IssueManifest>(`${COMICS_BASE}${issuePath}/issue.json`);
+  const manifest = await fetchJson<IssueManifest>(`${COMICS_BASE}${issuePath}/issue.json`);
+  return normalizeIssueManifest(manifest);
 }
 
 /** URL for a page image — static path. */
