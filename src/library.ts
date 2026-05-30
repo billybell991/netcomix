@@ -53,9 +53,10 @@ function containsPanel(outer: Panel, inner: Panel): boolean {
 }
 
 function normalizePagePanels(page: PageManifest): Panel[] {
-  if (page.panels.length < 3 || page.width <= 0 || page.height <= 0) return page.panels;
+  if (page.width <= 0 || page.height <= 0) return page.panels;
 
   const panels = sortPanelsInReadingOrder(page.panels, page.height);
+  if (panels.length < 3) return panels;
   const bucket = Math.max(Math.floor(page.height * ROW_BUCKET_RATIO), ROW_BUCKET_MIN);
   const pageArea = page.width * page.height;
   const normalized: Panel[] = [];
