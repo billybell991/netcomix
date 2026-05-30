@@ -540,21 +540,29 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     # Guard: only attempt if the top frame row has LOW ink (≥85% dark means
     # a solid colored bar like an ad header, not a comic panel border).
     # Comic pages with shared black panel borders typically have low-ink top margin.
-    if False and _splash_candidate is not None:
+    if _splash_candidate is not None:
         sc = _splash_candidate
-        sub_rects = _split_at_borders(sc[0], sc[1], sc[2], sc[3])
-        if len(sub_rects) > 1:
-            found = []
-            for (sx0, sy0, sx1, sy1) in sub_rects:
-                cw, ch = sx1 - sx0, sy1 - sy0
-                if cw >= min_panel_w and ch >= min_panel_h:
-                    found.append(Panel(sx0, sy0, cw, ch, sx0 + cw // 2, sy0 + ch // 2))
-            # Only commit if we found 2+ distinct panels; otherwise fall through to
-            # dark-background flood-fill which handles pages with no detectable borders.
-            if len(found) >= 2:
-                panels.extend(found)
-        if _os.environ.get("HARVEST_DEBUG"):
-            print(f"  [DBG] splash-border-split: {len(sub_rects)} rects → {len(panels)} panels")
+        sc_region = content[sc[1]:sc[3], sc[0]:sc[2]]
+        top_ink = float(sc_region[:max(6, min_gutter_v), :].mean())
+        bottom_ink = float(sc_region[max(0, sc_region.shape[0] - max(6, min_gutter_v)):, :].mean())
+        # Skip likely non-panel full-page art/headers where the frame edge is
+        # mostly solid dark color instead of thin comic panel borders.
+        if top_ink < 0.85 and bottom_ink < 0.95:
+            sub_rects = _split_at_borders(sc[0], sc[1], sc[2], sc[3])
+            if len(sub_rects) > 1:
+                found = []
+                for (sx0, sy0, sx1, sy1) in sub_rects:
+                    cw, ch = sx1 - sx0, sy1 - sy0
+                    if cw >= min_panel_w and ch >= min_panel_h:
+                        found.append(Panel(sx0, sy0, cw, ch, sx0 + cw // 2, sy0 + ch // 2))
+                # Only commit if we found 2+ distinct panels; otherwise fall through to
+                # dark-background flood-fill which handles pages with no detectable borders.
+                if len(found) >= 2:
+                    panels.extend(found)
+            if _os.environ.get("HARVEST_DEBUG"):
+                print(f"  [DBG] splash-border-split: top={top_ink:.2f} bottom={bottom_ink:.2f} {len(sub_rects)} rects → {len(panels)} panels")
+        elif _os.environ.get("HARVEST_DEBUG"):
+            print(f"  [DBG] splash-border-split skipped: top={top_ink:.2f} bottom={bottom_ink:.2f}")
 
     panels_split: List[Panel] = []
     for p in panels:
