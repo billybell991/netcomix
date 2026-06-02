@@ -34,6 +34,9 @@ export function Reader({ issue, issuePath, onBack }: Props) {
   });
   const [hudOpen, setHudOpen] = useState(false);
   const [debugOverlay, setDebugOverlay] = useState(false);
+  // Panel overlay works in DEV builds OR when localStorage flag is set.
+  // Enable on the deployed site: localStorage.setItem('netcomix-debug', '1') in the browser console.
+  const [devMode] = useState(() => import.meta.env.DEV || localStorage.getItem('netcomix-debug') === '1');
   const [fadeState, setFadeState] = useState<FadeState>("visible");
   const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null);
   const stageRefCallback = useCallback((el: HTMLDivElement | null) => { setStageEl(el); }, []);
@@ -142,7 +145,7 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     swipeRef.current = { x: e.clientX, y: e.clientY, t: Date.now(), touches: 1 };
   };
   const handlePointerUp = (e: React.PointerEvent) => {
-    if (!swipeRef.current || hudOpen) return;
+    if (!swipeRef.current || hudOpen || pinch.active) return;
     const dx = e.clientX - swipeRef.current.x;
     const dy = e.clientY - swipeRef.current.y;
     const dt = Date.now() - swipeRef.current.t;
@@ -170,7 +173,7 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     : "#111";
 
   const bgStyle = settings.colorMatchBackground && /^#[0-9a-fA-F]{6}$/.test(currentPage.dominantColor ?? "")
-    ? { background: `radial-gradient(ellipse at center, ${safeColor}55, #000 72%)` }
+    ? { background: `radial-gradient(ellipse at center, ${safeColor}33 0%, ${safeColor}11 40%, #000 85%)` }
     : { background: "#000" };
 
   const totalPages = issue.pages.length;
@@ -273,8 +276,8 @@ export function Reader({ issue, issuePath, onBack }: Props) {
         );
       })}
 
-      {/* Dev toolbar — only in development builds */}
-      {import.meta.env.DEV && (
+      {/* Dev toolbar — DEV build, or set localStorage.setItem('netcomix-debug','1') to enable on production */}
+      {devMode && (
         <div className="dev-toolbar" data-nohud>
           <button
             className={`dev-btn${debugOverlay ? " active" : ""}`}
