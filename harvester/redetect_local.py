@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from harvest_utils import PAGE_EXTS  # type: ignore
-from harvest import detect_panels as _opencv_detect  # type: ignore
+from harvest import detect_panels as _opencv_detect, detect_balloons_and_captions as _detect_balloons  # type: ignore
 from detect_gemini import detect_panels_gemini  # type: ignore
 
 PUBLIC_COMICS = Path(__file__).resolve().parent.parent / "public" / "comics"
@@ -76,9 +76,20 @@ def redetect(issue_id: str) -> int:
                 ]
                 source = "opencv"
 
+            # Balloon/caption fallback: neither Gemini nor OpenCV found panels
+            if not new_panels:
+                balloon_panels = _detect_balloons(img_path)
+                if balloon_panels:
+                    new_panels = [
+                        {"x": p.x, "y": p.y, "w": p.w, "h": p.h,
+                         "centerX": p.centerX, "centerY": p.centerY}
+                        for p in balloon_panels
+                    ]
+                    source = "balloons"
+
             old_count = len(page.get("panels", []))
             if old_count != len(new_panels):
-                print(f"  {page['file']}: {old_count} → {len(new_panels)} panels [{source}]")
+                print(f"  {page['file']}: {old_count} -> {len(new_panels)} panels [{source}]")
                 changed += 1
             else:
                 print(f"  {page['file']}: {len(new_panels)} panels (unchanged) [{source}]")
@@ -86,7 +97,7 @@ def redetect(issue_id: str) -> int:
         page["panels"] = new_panels
 
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    print(f"\n✓ Updated {manifest_path}")
+    print(f"\nUpdated {manifest_path}")
     print(f"  {changed} pages changed")
     return 0
 

@@ -195,8 +195,43 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     h, w = img.shape[:2]
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # ── Colored-border detection ──────────────────────────────────────────
+    # Some comics (e.g. Papercutz TFTC) have a solid colored outer border
+    # (purple, green, etc.) that fills both the page margins AND the gutters
+    # between panels.  That makes every gutter row/col look "high ink" to the
+    # standard content mask (gray < threshold), so projection-cut can't find
+    # any gutters and returns a single splash-sized rect.
+    #
+    # Fix: sample the outer 5 % band.  If a non-white, non-black color
+    # dominates (>25 % of the non-white pixels), treat pixels within ±30 gray
+    # of that color as background (not ink) in the content mask.  Black ink and
+    # colored artwork outside that narrow window are unaffected.
+    _border_band = max(int(h * 0.05), 8)
+    _border_px = np.concatenate([
+        gray[:_border_band, :].ravel(),
+        gray[-_border_band:, :].ravel(),
+        gray[:, :_border_band].ravel(),
+        gray[:, -_border_band:].ravel(),
+    ])
+    _colored_px = _border_px[(_border_px > 30) & (_border_px < 200)]
+    _bg_gray: Optional[int] = None
+    if _colored_px.size > 500:
+        _hist, _bins = np.histogram(_colored_px, bins=50, range=(30, 200))
+        _peak = int(np.argmax(_hist))
+        _dominant = int((_bins[_peak] + _bins[_peak + 1]) / 2)
+        if _hist[_peak] / _colored_px.size > 0.25:   # dominant color ≥25 % of colored border
+            _bg_gray = _dominant
+
+    def _make_content(threshold: int) -> np.ndarray:
+        """Create an ink mask, optionally suppressing the detected border color."""
+        base = (gray < threshold).astype(np.uint8)
+        if _bg_gray is not None:
+            base &= (np.abs(gray.astype(np.int16) - _bg_gray) > 30).astype(np.uint8)
+        return base
+
     # content_mask: 1 where there's ink/art, 0 where the page is white (gutter).
-    content = (gray < gutter_threshold).astype(np.uint8)
+    content = _make_content(gutter_threshold)
 
     # Knobs (relative to page size so they scale with resolution):
     #   min_gutter:    how many consecutive near-empty rows/cols count as a gutter
@@ -224,7 +259,7 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     # Yellow narration caption boxes (~218-228 gray) are counted as ink by the
     # main content mask (< 230) and can block detection of inter-row gutters.
     # content_225 treats those caption pixels as white, exposing the real gutter.
-    content_225 = (gray < 225).astype(np.uint8)
+    content_225 = _make_content(225)
 
     # Strips produced by the thin-gap fallback are confirmed single-panel rows;
     # they must NOT be further split by _split_at_borders (the fallback has
@@ -434,6 +469,51 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
         print(f"  [DBG] tightened bbox: ({x0},{y0})-({x1},{y1})")
         print(f"  [DBG] split() rects ({len(rects)}): {rects[:8]}")
 
+    # ── Colored-border fallback ────────────────────────────────────────────
+    # If projection-cut returned just one big rect AND no border color was
+    # found from the outer band, probe for uniformly-colored rows/cols.
+    # Colored gutters (e.g. a solid purple strip between panels) have VERY LOW
+    # row/column variance — all pixels are approximately the same mid-gray.
+    # Content rows (artwork) are high-variance.  White-margin rows are high
+    # mean (>200) so they're excluded from the sample.
+    if len(rects) <= 1 and _bg_gray is None:
+        _row_stds = gray.astype(np.float32).std(axis=1)
+        _row_means = gray.mean(axis=1).astype(np.float32)
+        _col_stds = gray.astype(np.float32).std(axis=0)
+        _col_means = gray.mean(axis=0).astype(np.float32)
+        _uniform_rows = (_row_stds < 20) & (_row_means > 60) & (_row_means < 200)
+        _uniform_cols = (_col_stds < 20) & (_col_means > 60) & (_col_means < 200)
+        _probe = np.concatenate([
+            gray[_uniform_rows, :].ravel(),
+            gray[:, _uniform_cols].ravel(),
+        ])
+        _probe = _probe[(_probe > 60) & (_probe < 200)]
+        if _probe.size > 200:
+            _hist_f, _bins_f = np.histogram(_probe, bins=30, range=(60, 200))
+            _pk_f = int(np.argmax(_hist_f))
+            if _hist_f[_pk_f] / _probe.size > 0.25:
+                _bg_gray = int((_bins_f[_pk_f] + _bins_f[_pk_f + 1]) / 2)
+                if _os.environ.get("HARVEST_DEBUG"):
+                    print(f"  [DBG] colored-border fallback: bg_gray={_bg_gray}, "
+                          f"probe_size={_probe.size}")
+                content = _make_content(gutter_threshold)
+                content_225 = _make_content(225)
+                thin_gap_confirmed.clear()
+                needs_border_split.clear()
+                # Recompute tight bbox with border-stripped ink mask
+                _ria2 = content.sum(axis=1) / w
+                _cia2 = content.sum(axis=0) / h
+                _riw2 = np.where(_ria2 >= bbox_ink_ratio)[0]
+                _ciw2 = np.where(_cia2 >= bbox_ink_ratio)[0]
+                if _riw2.size and _ciw2.size:
+                    x0 = int(_ciw2[0])
+                    y0 = int(_riw2[0])
+                    x1 = int(_ciw2[-1] + 1)
+                    y1 = int(_riw2[-1] + 1)
+                rects = split(x0, y0, x1, y1, "h", 0)
+                if _os.environ.get("HARVEST_DEBUG"):
+                    print(f"  [DBG] fallback split() rects ({len(rects)}): {rects[:8]}")
+
     page_area = w * h
 
     # ── Pass 1: basic size + aspect-ratio filters ─────────────────────────
@@ -507,8 +587,9 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
         # Only look for columns with ink below ink_ratio (the same threshold used
         # by split() for column gutter detection).  Skip dark-border detection.
         if only_white_gutter:
+            col_ink_225 = content_225[py0:py1, px0:px1].astype(np.float32).sum(axis=0) / max(rh, 1)
             col_edge = max(int(rw * 0.05), 8)
-            white_runs = find_gutter_runs(col_ink, ink_ratio, min_gutter_h)
+            white_runs = find_gutter_runs(col_ink_225, ink_ratio, min_gutter_h)
             white_interior = [(s, e) for (s, e) in white_runs
                               if s > col_edge and e < rw - col_edge]
             if white_interior:
@@ -540,7 +621,7 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     # Guard: only attempt if the top frame row has LOW ink (≥85% dark means
     # a solid colored bar like an ad header, not a comic panel border).
     # Comic pages with shared black panel borders typically have low-ink top margin.
-    if False and _splash_candidate is not None:
+    if _splash_candidate is not None:
         sc = _splash_candidate
         sub_rects = _split_at_borders(sc[0], sc[1], sc[2], sc[3])
         if len(sub_rects) > 1:
@@ -556,6 +637,115 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
         if _os.environ.get("HARVEST_DEBUG"):
             print(f"  [DBG] splash-border-split: {len(sub_rects)} rects → {len(panels)} panels")
 
+    # ── Pass 1.6: Partial-height colored border fallback ──────────────────
+    # Handles T-layout pages (2 top panels + 1 bottom) where a decorative
+    # colored border strip separates the top panels but spans only the top
+    # portion of the page height.  Global column statistics miss it because the
+    # bottom panel has completely different pixels at those x positions.
+    # Algorithm: scan each interior column for the longest sustained run of
+    # mid-gray pixels (80–210 gray, std < 20).  Group consecutive columns
+    # with overlapping runs.  Guards:
+    #   (a) the strip must divide the page 25–75% horizontally
+    #   (b) the strip must start within the top 35% of content height
+    #   (c) the strip must span < 50% of total content height (prevents
+    #       uniform-colored full-height art regions from triggering)
+    if _splash_candidate is not None and len(panels) == 0:
+        _pb_ch = y1 - y0
+        _pb_cw = x1 - x0
+        _pb_min_run = max(100, int(_pb_ch * 0.15))
+        _pb_std_thr = 20.0
+        _pb_x_margin = max(int(_pb_cw * 0.10), 20)
+        _pb_col_data: dict = {}
+        for _pb_x in range(x0 + _pb_x_margin, x1 - _pb_x_margin):
+            _pb_col = gray[y0:y1, _pb_x].astype(np.float32)
+            _pb_mid = (_pb_col > 80) & (_pb_col < 210)
+            _pb_runs: list = []
+            _pb_cs, _pb_cl = 0, 0
+            for _pb_i, _pb_v in enumerate(_pb_mid):
+                if _pb_v:
+                    if _pb_cl == 0:
+                        _pb_cs = _pb_i
+                    _pb_cl += 1
+                else:
+                    if _pb_cl > 0:
+                        _pb_runs.append([_pb_cs, _pb_cs + _pb_cl])
+                    _pb_cl = 0
+            if _pb_cl > 0:
+                _pb_runs.append([_pb_cs, _pb_cs + _pb_cl])
+            # Merge runs separated by ≤5 px gaps
+            _pb_merged: list = []
+            for _pb_r in _pb_runs:
+                if _pb_merged and _pb_r[0] - _pb_merged[-1][1] <= 5:
+                    _pb_merged[-1][1] = _pb_r[1]
+                else:
+                    _pb_merged.append(_pb_r[:])
+            _pb_bl, _pb_bs = 0, 0
+            for _pb_r in _pb_merged:
+                _l = _pb_r[1] - _pb_r[0]
+                if _l > _pb_bl:
+                    _pb_bl = _l
+                    _pb_bs = _pb_r[0]
+            if _pb_bl >= _pb_min_run:
+                _pb_seg = _pb_col[_pb_bs:_pb_bs + _pb_bl]
+                if float(_pb_seg.std()) < _pb_std_thr:
+                    _pb_col_data[_pb_x] = (_pb_bs, _pb_bs + _pb_bl)
+        if _pb_col_data:
+            _pb_sorted = sorted(_pb_col_data.keys())
+            _pb_groups: list = []
+            _pb_cg = [_pb_sorted[0]]
+            for _pb_x in _pb_sorted[1:]:
+                _pb_px = _pb_cg[-1]
+                if _pb_x - _pb_px <= 3:
+                    _pb_pr = _pb_col_data[_pb_px]
+                    _pb_cr = _pb_col_data[_pb_x]
+                    if _pb_cr[0] < _pb_pr[1] and _pb_cr[1] > _pb_pr[0]:
+                        _pb_cg.append(_pb_x)
+                        continue
+                _pb_groups.append(_pb_cg)
+                _pb_cg = [_pb_x]
+            _pb_groups.append(_pb_cg)
+            _pb_mgw = max(8, int(_pb_cw * 0.005))
+            _pb_valid: list = []
+            for _pb_g in _pb_groups:
+                if len(_pb_g) < _pb_mgw:
+                    continue
+                _pb_ys = [_pb_col_data[_pb_x][0] for _pb_x in _pb_g]
+                _pb_ye = [_pb_col_data[_pb_x][1] for _pb_x in _pb_g]
+                _pb_bx = x0 + (_pb_g[0] - x0 + _pb_g[-1] - x0) // 2
+                _pb_by0 = int(np.median(_pb_ys))
+                _pb_by1 = int(np.median(_pb_ye))
+                _pb_span = _pb_by1 - _pb_by0
+                _pb_lf = (_pb_bx - x0) / _pb_cw
+                if not (0.25 <= _pb_lf <= 0.75):
+                    continue
+                # Strip must start near the top of the content area (within 8%).
+                # A T-layout border strip begins at the very top of the top panels;
+                # if it starts midway down the page, it's art content, not a gutter.
+                if _pb_by0 > _pb_ch * 0.08:
+                    continue
+                if y0 + _pb_by0 > y0 + _pb_ch * 0.35:
+                    continue
+                if _pb_span > _pb_ch * 0.50:
+                    continue
+                _pb_valid.append((_pb_bx, y0 + _pb_by0, y0 + _pb_by1, _pb_span))
+            _pb_valid.sort(key=lambda v: -v[3])
+            for (_pb_bx, _pb_aby0, _pb_aby1, _pb_span) in _pb_valid:
+                _pb_ty1 = _pb_aby1
+                _pb_bh = y1 - _pb_ty1
+                _pb_th = _pb_ty1 - y0
+                _pb_lw = _pb_bx - x0
+                _pb_rw = x1 - _pb_bx
+                if _pb_lw < min_panel_w or _pb_rw < min_panel_w or _pb_th < min_panel_h:
+                    continue
+                panels.append(Panel(x0, y0, _pb_lw, _pb_th, x0 + _pb_lw // 2, y0 + _pb_th // 2))
+                panels.append(Panel(_pb_bx, y0, _pb_rw, _pb_th, _pb_bx + _pb_rw // 2, y0 + _pb_th // 2))
+                if _pb_bh >= min_panel_h:
+                    panels.append(Panel(x0, _pb_ty1, x1 - x0, _pb_bh, x0 + (x1 - x0) // 2, _pb_ty1 + _pb_bh // 2))
+                if _os.environ.get("HARVEST_DEBUG"):
+                    print(f"  [DBG] partial-border fallback: bx={_pb_bx}, top_y1={_pb_ty1}, "
+                          f"span={_pb_span}, {len(panels)} panels")
+                break
+
     panels_split: List[Panel] = []
     for p in panels:
         # Thin-gap confirmed strips are already correctly identified as single-scene
@@ -570,13 +760,13 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                for (_sy0, _sy1) in needs_border_split):
             sub_rects = _split_at_borders(p.x, p.y, p.x + p.w, p.y + p.h, only_white_gutter=True)
             if len(sub_rects) > 1:
-                added = 0
+                added_panels = []
                 for (sx0, sy0, sx1, sy1) in sub_rects:
                     cw, ch = sx1 - sx0, sy1 - sy0
                     if cw >= min_panel_w and ch >= min_panel_h:
-                        panels_split.append(Panel(sx0, sy0, cw, ch, sx0 + cw // 2, sy0 + ch // 2))
-                        added += 1
-                if added > 0:
+                        added_panels.append(Panel(sx0, sy0, cw, ch, sx0 + cw // 2, sy0 + ch // 2))
+                if len(added_panels) >= 2:
+                    panels_split.extend(added_panels)
                     continue
             panels_split.append(p)
             continue
@@ -589,13 +779,13 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
             if top_ink > 0.85:
                 sub_rects = _split_at_borders(p.x, p.y, p.x + p.w, p.y + p.h)
                 if len(sub_rects) > 1:
-                    added = 0
+                    added_panels = []
                     for (sx0, sy0, sx1, sy1) in sub_rects:
                         cw, ch = sx1 - sx0, sy1 - sy0
                         if cw >= min_panel_w and ch >= min_panel_h:
-                            panels_split.append(Panel(sx0, sy0, cw, ch, sx0 + cw // 2, sy0 + ch // 2))
-                            added += 1
-                    if added > 0:
+                            added_panels.append(Panel(sx0, sy0, cw, ch, sx0 + cw // 2, sy0 + ch // 2))
+                    if len(added_panels) >= 2:
+                        panels_split.extend(added_panels)
                         continue  # replaced by valid sub-panels
         panels_split.append(p)
     panels = panels_split
@@ -844,43 +1034,6 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     if len(panels) == 1 and (panels[0].w * panels[0].h) / page_area < 0.15:
         panels = []
 
-    # ── Post-process: insert row-overview panels before each multi-panel row ─
-    # For horizontal rows containing 2+ sub-panels, prepend a "row overview"
-    # panel covering the entire row's bounding box.  This gives readers context
-    # (the full strip) before zooming into each individual panel — the same
-    # reading rhythm used in most comic reader apps.
-    if len(panels) >= 2:
-        row_groups: List[List[Panel]] = []
-        cur_group: List[Panel] = [panels[0]]
-        for p in panels[1:]:
-            if p.y // bucket == cur_group[0].y // bucket:
-                cur_group.append(p)
-            else:
-                row_groups.append(cur_group)
-                cur_group = [p]
-        row_groups.append(cur_group)
-
-        panels_with_overviews: List[Panel] = []
-        for grp in row_groups:
-            if len(grp) >= 2:
-                rx0 = min(p.x for p in grp)
-                ry0 = min(p.y for p in grp)
-                rx1 = max(p.x + p.w for p in grp)
-                ry1 = max(p.y + p.h for p in grp)
-                rov_w, rov_h = rx1 - rx0, ry1 - ry0
-                max_sub_w = max(p.w for p in grp)
-                # Only add the overview when the combined row is meaningfully
-                # wider than any single sub-panel (confirms it's a real
-                # multi-panel row, not a duplicate detection), and it doesn't
-                # swallow almost the whole page (which would be a splash).
-                if rov_w > max_sub_w * 1.1 and (rov_w * rov_h) / page_area < 0.80:
-                    panels_with_overviews.append(
-                        Panel(rx0, ry0, rov_w, rov_h,
-                              rx0 + rov_w // 2, ry0 + rov_h // 2)
-                    )
-            panels_with_overviews.extend(grp)
-        panels = panels_with_overviews
-
     # Dominant color (mean of a downsampled copy — cheap and good enough for
     # the reader's letterbox background tint).
     small = cv2.resize(img, (50, 75))
@@ -889,6 +1042,149 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     dominant = f"#{r:02x}{g:02x}{b:02x}"
 
     return w, h, panels, dominant
+
+
+# ---------------------------------------------------------------------------
+# Balloon / caption fallback detector
+# ---------------------------------------------------------------------------
+
+def detect_balloons_and_captions(image_path: Path) -> List[Panel]:
+    """Fallback for non-cover pages where projection-cut returns no panels.
+
+    Finds speech balloons, thought bubbles, and narrative caption boxes by
+    locating enclosed light regions that cannot be reached by flood-filling
+    from the page border — i.e. regions enclosed by dark ink borders.
+
+    Two threshold passes:
+      200 — white speech balloons and white caption boxes
+      230 — additionally catches yellow/tinted narrative caption boxes (~210-230 gray)
+
+    Exclusion rules applied to every candidate:
+      - Area < 0.4 % of page → noise
+      - Area > 40 % of page  → art content, not a balloon
+      - Bottom 9 % of page   → barcodes, page numbers, publisher info
+      - Top 4 % AND width > 35 % of page → chapter headers, logos
+      - Interior mean brightness < 130 → dark art region, not a balloon
+      - Aspect ratio outside [0.15, 8.0] → degenerate sliver or bar
+
+    Hard cap: if > 12 candidates remain, return [] (probably detecting art
+    regions on a panel-dense page — better to show the full page).
+
+    Not called on dark-background pages (outer-border darkness > 55 %).
+    Returns panels sorted in reading order (top → bottom, left → right).
+    """
+    if not HAS_CV:
+        return []
+    img = cv2.imread(str(image_path))
+    if img is None:
+        return []
+    h, w = img.shape[:2]
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    page_area = w * h
+
+    # Skip dark-background pages — the dark-bg flood-fill in detect_panels already
+    # tried those, and if it returned [] there simply are no detectable regions.
+    # Also skip pages with dark or colored outer borders (e.g., purple border around
+    # panels, dark-green Polaroid collage pages).  On those pages the flood-fill seeds
+    # can't spread across the border, so ALL interior light regions appear "enclosed" —
+    # this produces false positives from art backgrounds and character highlights.
+    # Guard: skip if outer-border mean brightness < 165 (captures dark, purple, green,
+    # blue borders while allowing white and yellow page backgrounds through).
+    _band = max(int(h * 0.04), 6)
+    _outer = np.concatenate([
+        gray[:_band, :].ravel(), gray[-_band:, :].ravel(),
+        gray[:, :_band].ravel(), gray[:, -_band:].ravel(),
+    ])
+    if float(_outer.mean()) < 165:
+        return []
+
+    y_header_cut = int(h * 0.04)    # top 4 % — logos, chapter headers
+    y_barcode_cut = int(h * 0.91)   # bottom 9 % — barcodes, page numbers
+    min_area = page_area * 0.004    # 0.4 % — smaller = noise
+    max_area = page_area * 0.05     # 5 % — larger = art region, not a balloon
+    # Speech balloons never span more than half the page width.
+    # Wider regions are photo frames, art backgrounds, or panel borders.
+    max_balloon_w = int(w * 0.50)
+
+    candidates: List[Panel] = []
+    seen_keys: set = set()  # deduplicate bounding-box origins across passes
+
+    for thresh in (200, 230):
+        _, binary = cv2.threshold(gray, thresh, 255, cv2.THRESH_BINARY)
+        bg = binary.copy()
+
+        # Flood-fill from a dense grid of border pixels to paint the page background
+        # as 128.  After all seeds run, any pixel still at 255 is enclosed by ink.
+        step_x = max(1, w // 20)
+        step_y = max(1, h // 20)
+        for sx in range(0, w, step_x):
+            for edge_y in (0, h - 1):
+                if bg[edge_y, sx] == 255:
+                    cv2.floodFill(bg, np.zeros((h + 2, w + 2), dtype=np.uint8),
+                                  (sx, edge_y), 128)
+        for sy in range(0, h, step_y):
+            for edge_x in (0, w - 1):
+                if bg[sy, edge_x] == 255:
+                    cv2.floodFill(bg, np.zeros((h + 2, w + 2), dtype=np.uint8),
+                                  (edge_x, sy), 128)
+
+        enclosed = (bg == 255).astype(np.uint8) * 255
+        cnts, _ = cv2.findContours(enclosed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        for cnt in cnts:
+            area = cv2.contourArea(cnt)
+            if area < min_area or area > max_area:
+                continue
+            bx, by, bw, bh = cv2.boundingRect(cnt)
+            # Also filter by bounding box area: sparse/ring-shaped regions (e.g. photo
+            # frames) have small contour area but large bounding boxes.  The reader snaps
+            # to the bounding box, so filter by bbox footprint too.
+            if bw * bh > page_area * 0.07:
+                continue
+            # Deduplicate: treat bounding-box origins within 20 px as the same region
+            key = (bx // 20, by // 20)
+            if key in seen_keys:
+                continue
+            # Exclude wide header regions near the top
+            if by < y_header_cut and bw > w * 0.35:
+                continue
+            # Exclude regions wider than half the page (photo frames, art backgrounds)
+            if bw > max_balloon_w:
+                continue
+            # Exclude barcode / footer zone
+            if (by + bh) > y_barcode_cut:
+                continue
+            # Exclude if region centre is in the footer
+            if (by + bh // 2) > int(h * 0.93):
+                continue
+            if bh == 0:
+                continue
+            aspect = bw / bh
+            if not (0.15 <= aspect <= 8.0):
+                continue
+            # Balloon / caption interior must be light (not a dark art region)
+            if float(gray[by:by + bh, bx:bx + bw].mean()) < 130:
+                continue
+            # Fill ratio check: real speech balloons and caption boxes fill most of
+            # their bounding box with bright enclosed pixels.  Art highlights, spiky
+            # hair, and other sparse enclosed shapes have a large bbox but few bright
+            # pixels — they'd produce wrong snap targets.  Require at least 40 % fill.
+            enclosed_fill = int((enclosed[by:by + bh, bx:bx + bw] == 255).sum())
+            if enclosed_fill / (bw * bh) < 0.40:
+                continue
+            seen_keys.add(key)
+            candidates.append(Panel(
+                x=bx, y=by, w=bw, h=bh,
+                centerX=bx + bw // 2, centerY=by + bh // 2,
+            ))
+
+    if not candidates or len(candidates) > 12:
+        return []
+
+    # Reading order: bucket rows, then left-to-right within each row
+    bucket = max(int(h * 0.08), 20)
+    candidates.sort(key=lambda p: (p.y // bucket, p.x))
+    return candidates
 
 
 # ---------------------------------------------------------------------------
@@ -909,8 +1205,11 @@ def harvest_issue(archive: Path, series_dir: Path, issue_slug: str, issue_title:
         return None
 
     page_manifests: List[PageManifest] = []
-    for p in pages:
+    for page_idx, p in enumerate(pages):
         w, h, panels, dom = detect_panels(p, gutter_threshold=gutter_threshold)
+        # Non-cover page with no panels → try balloon / caption fallback
+        if page_idx > 0 and not panels:
+            panels = detect_balloons_and_captions(p)
         page_manifests.append(PageManifest(
             file=p.name, width=w, height=h, panels=panels, dominantColor=dom
         ))
