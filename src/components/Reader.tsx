@@ -46,6 +46,12 @@ export function Reader({ issue, issuePath, onBack }: Props) {
   const pendingNavRef = useRef<(() => void) | null>(null);
   // Double-tap timing — must be before early return to satisfy Rules of Hooks
   const lastTapRef = useRef(0);
+  // Tracks which issue.id we've restored progress for. Prevents the save
+  // effect from clobbering saved progress with the initial (0,-1) position
+  // during the brief window after fetchIssue resolves but before the
+  // restore effect runs. Without this gate, every reader open resets to
+  // the cover.
+  const restoredIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const onResize = () => setScreenSize({ width: window.innerWidth, height: window.innerHeight });
@@ -55,10 +61,11 @@ export function Reader({ issue, issuePath, onBack }: Props) {
   }, []);
 
   useEffect(() => {
-    if (issue) {
-      setProgress(issue.id, serialize(position));
-      setLastRead(issue.series, issue.id);
-    }
+    if (!issue) return;
+    // Don't write progress until we've restored it for this issue.
+    if (restoredIdRef.current !== issue.id) return;
+    setProgress(issue.id, serialize(position));
+    setLastRead(issue.series, issue.id);
   }, [issue, position]);
 
   const currentPage = issue?.pages[position.pageIndex];
@@ -76,7 +83,9 @@ export function Reader({ issue, issuePath, onBack }: Props) {
 
   // Restore saved progress when a new issue loads
   useEffect(() => {
-    if (issue) setPosition(deserialize(getProgress(issue.id)));
+    if (!issue) return;
+    setPosition(deserialize(getProgress(issue.id)));
+    restoredIdRef.current = issue.id;
   }, [issue?.id]);
 
   // Pre-cache next page
