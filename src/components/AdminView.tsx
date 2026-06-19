@@ -212,14 +212,34 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
           {uploadError && <p style={{ color: "#e53935", fontSize: 13, margin: "6px 0" }}>{uploadError}</p>}
           {uploadDone && <p style={{ color: "#4caf50", fontSize: 13, margin: "6px 0" }}>✓ Committed — scan triggered</p>}
 
-          <button
-            className="btn-primary"
-            onClick={onUpload}
-            disabled={!uploadFiles.length || uploading || !ghConfigured}
-            style={{ marginTop: 4 }}
-          >
-            {uploading ? "Committing…" : `Upload${uploadFiles.length > 0 ? ` (${uploadFiles.length})` : ""} & Scan`}
-          </button>
+          {(() => {
+            const disabled = !uploadFiles.length || uploading || !ghConfigured;
+            return (
+              <button
+                className="btn-primary"
+                onClick={onUpload}
+                disabled={disabled}
+                style={{
+                  marginTop: 10,
+                  width: "100%",
+                  padding: "12px 16px",
+                  background: disabled ? "#1a3a6e" : "#1f6feb",
+                  color: disabled ? "#7a8a9e" : "#fff",
+                  border: "1px solid",
+                  borderColor: disabled ? "#1a3a6e" : "#388bff",
+                  borderRadius: 8,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  letterSpacing: 0.3,
+                  cursor: disabled ? "not-allowed" : "pointer",
+                  boxShadow: disabled ? "none" : "0 2px 8px rgba(31,111,235,0.35)",
+                  transition: "background 0.15s, box-shadow 0.15s",
+                }}
+              >
+                {uploading ? "Committing…" : `⬆ Upload${uploadFiles.length > 0 ? ` (${uploadFiles.length})` : ""} & Scan`}
+              </button>
+            );
+          })()}
           {!ghConfigured && <p style={{ color: "#888", fontSize: 12, marginTop: 6 }}>Configure GitHub in Setup to enable uploads.</p>}
 
           {/* ── Upload diagnostics log ──────────────────────────── */}
