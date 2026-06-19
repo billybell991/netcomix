@@ -133,6 +133,46 @@ test.describe("NetComix critical path", () => {
     expect(json.series.length).toBeGreaterThan(0);
   });
 
+  test("library link integrity: every tile reaches a real series with ≥1 working issue", async ({ page }) => {
+    // Catches phantom series entries: tiles that exist in library.json but
+    // point to paths where series.json is 404 or issues are missing/broken.
+    // Caught the 2026-06-19 regression where library.json had 3 phantom
+    // tiles pointing at stale untracked dirs.
+    const libRes = await page.request.get("/netcomix/comics/library.json");
+    expect(libRes.status()).toBe(200);
+    const lib = await libRes.json();
+    expect(Array.isArray(lib.series)).toBe(true);
+    expect(lib.series.length).toBeGreaterThan(0);
+
+    for (const series of lib.series) {
+      const sRes = await page.request.get(`/netcomix/comics/${series.path}/series.json`);
+      expect(sRes.status(), `series.json missing for ${series.id}`).toBe(200);
+      const sJson = await sRes.json();
+      expect(
+        Array.isArray(sJson.issues) && sJson.issues.length > 0,
+        `${series.id} has no issues`
+      ).toBe(true);
+      expect(
+        sJson.issues.length,
+        `${series.id} library.issueCount mismatch series.issues.length`
+      ).toBe(series.issueCount);
+
+      // Verify first issue is fully usable: issue.json + cover image both load.
+      const firstIssue = sJson.issues[0];
+      const iRes = await page.request.get(`/netcomix/comics/${firstIssue.path}/issue.json`);
+      expect(iRes.status(), `issue.json missing for ${firstIssue.id}`).toBe(200);
+      const iJson = await iRes.json();
+      expect(
+        Array.isArray(iJson.pages) && iJson.pages.length > 0,
+        `${firstIssue.id} has no pages`
+      ).toBe(true);
+      const coverRes = await page.request.get(
+        `/netcomix/comics/${firstIssue.path}/${iJson.cover}`
+      );
+      expect(coverRes.status(), `cover image missing for ${firstIssue.id}`).toBe(200);
+    }
+  });
+
   test("PWA manifest is served", async ({ page }) => {
     const res = await page.request.get("/netcomix/manifest.webmanifest");
     expect(res.status()).toBe(200);

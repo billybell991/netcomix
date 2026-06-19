@@ -780,9 +780,28 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
         # Must meet minimum dimension thresholds.
         if cw < min_panel_w or ch < min_panel_h:
             continue
-        # Must be at least 8 % of total page area (kills thumbnail-sized boxes).
-        if (cw * ch) / page_area < 0.08:
+        # Must be at least 4 % of total page area (kills thumbnail-sized boxes
+        # while preserving legitimate small panels in 4-panel rows / quarter-
+        # row layouts that come in ~6-8 % of page area, e.g. TFTC #02 p8's
+        # small top-right "paramedics" panel at 7.94 %).
+        area_frac = (cw * ch) / page_area
+        if area_frac < 0.04:
             continue
+        # Border-strength guard for small panels (4-8 % area): legitimate small
+        # comic panels have visible dark border lines on all 4 edges; fake
+        # "panels" from projection-cut hitting gaps between large title-text
+        # glyphs (e.g. TFTC #02 p3 "TERROR") have all edges in 0.14-0.42 ink.
+        # Real small panels have all 4 edges ≥ 0.61.  Require ≥ 3 of 4 edges
+        # to have band ink ≥ 0.50 (slack for one bleed/borderless edge).
+        if area_frac < 0.08:
+            _b = max(3, int(min(cw, ch) * 0.01))
+            _top = float(content[ry0:ry0 + _b, rx0:rx1].mean())
+            _bot = float(content[ry1 - _b:ry1, rx0:rx1].mean())
+            _lft = float(content[ry0:ry1, rx0:rx0 + _b].mean())
+            _rgt = float(content[ry0:ry1, rx1 - _b:rx1].mean())
+            _strong = sum(1 for v in (_top, _bot, _lft, _rgt) if v >= 0.50)
+            if _strong < 3:
+                continue
         # Sane aspect ratio: 0.15 ≤ w/h ≤ 6.0  (drops degenerate slivers).
         aspect = cw / ch if ch > 0 else 0
         if not (0.15 <= aspect <= 6.0):
