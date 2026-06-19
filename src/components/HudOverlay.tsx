@@ -61,19 +61,18 @@ export function HudOverlay({
         <SettingRow label="Buttons">
           <select
             className="hud-select"
-            value={settings.buttonPosition}
-            onChange={(e) => set("buttonPosition", e.target.value as ButtonPosition)}
-          >
-            <option value="corners">Corners</option>
-            <option value="sides">Sides</option>
-          </select>
-        </SettingRow>
+              data-testid="position-select"
+              value={settings.buttonPosition}
+              onChange={(e) => set("buttonPosition", e.target.value as ButtonPosition)}
+            >
+              <option value="corners">Corners</option>
+              <option value="sides">Sides</option>
+            </select>
+          </SettingRow>
 
-        <SettingRow label="Button visibility">
-          <input
-            type="range" min={0} max={1} step={0.05}
-            value={settings.buttonOpacity}
-            className="hud-range"
+          <SettingRow label="Button visibility">
+            <input
+              data-testid="opacity-slider"
             onChange={(e) => set("buttonOpacity", parseFloat(e.target.value))}
           />
         </SettingRow>

@@ -113,7 +113,7 @@ test.describe("NetComix critical path", () => {
     const box2 = await page.getByTestId("reader").boundingBox();
     if (!box2) throw new Error("no bounding box 2");
     await page.mouse.dblclick(box2.x + box2.width / 2, box2.y + box2.height / 2);
-    await expect(page.getByTestId("sounds-toggle")).not.toBeChecked();
+    await expect(page.getByTestId("sounds-toggle")).toHaveAttribute("aria-pressed", "false");
   });
 
   test("favorites toggle persists", async ({ page }) => {

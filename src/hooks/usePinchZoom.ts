@@ -89,12 +89,15 @@ export function usePinchZoom(
         const factor = d / startDist.current;
         const scale = clampScale(startTransform.current.scale * factor);
         const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-        const dx = mid.x - startMid.current.x;
-        const dy = mid.y - startMid.current.y;
+        
+        // Calculate where the pinch midpoint was on the unscaled image originally
+        const imgX = (startMid.current.x - startTransform.current.translateX) / startTransform.current.scale;
+        const imgY = (startMid.current.y - startTransform.current.translateY) / startTransform.current.scale;
+        
         setTransform({
           scale,
-          translateX: startTransform.current.translateX + dx,
-          translateY: startTransform.current.translateY + dy,
+          translateX: mid.x - imgX * scale,
+          translateY: mid.y - imgY * scale,
         });
       } else if (pointers.current.size === 1) {
         const [p] = Array.from(pointers.current.values());

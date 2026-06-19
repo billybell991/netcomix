@@ -3,7 +3,7 @@ import json
 WIDE_PANEL_RATIO = 0.85
 PANEL_Y_TOLERANCE = 5
 
-data = json.load(open('c:/Stuff/NetComix/public/comics/tales-from-the-crypt-v2-01-papercutz/tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero/issue.json'))
+data = json.load(open('c:/Stuff/NetComix/public/comics/tales-from-the-crypt-v2/tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero/issue.json'))
 page = data['pages'][6]
 panels = page['panels']
 width = page['width']
@@ -33,3 +33,4 @@ while i < len(panels):
     i += 1
 
 print("expanded:", len(expanded), "snaps")
+

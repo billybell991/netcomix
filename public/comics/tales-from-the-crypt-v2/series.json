@@ -1,7 +1,14 @@
 {
   "id": "tales-from-the-crypt-v2",
-  "title": "Tales from the Crypt v2",
+  "title": "tales-from-the-crypt-v2",
   "issues": [
+    {
+      "id": "tales-from-the-crypt-v2",
+      "title": "tales-from-the-crypt-v2",
+      "cover": "page-001.jpg",
+      "pageCount": 1,
+      "path": "tales-from-the-crypt-v2/tales-from-the-crypt-v2"
+    },
     {
       "id": "tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero",
       "title": "Tales from the Crypt v2 #01",

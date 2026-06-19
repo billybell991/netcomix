@@ -358,6 +358,72 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                         _use_direct_leaf = True
                         for _s3, _e3 in strips3:
                             needs_border_split.append((y0 + _s3, y0 + _e3))
+                # Loose-225 fallback (depth ≤ 1): dim-background pages where a
+                # colored sky/background bleeds into the inter-row gutter.  The
+                # gutter is still distinguishable as a clear LOCAL MINIMUM in
+                # the 225-thresh row_ink profile (e.g. ~0.27 vs. surrounding
+                # ~0.95 above), even though it never drops below ink_ratio.
+                # Asymmetric sandwich: require a strong PEAK above the gutter
+                # (panel border or content ending) with a sharp drop into the
+                # gutter.  The "below" side may have any profile because the
+                # next panel often starts with a white/sky background.
+                if len(strips) < 2 and depth <= 1:
+                    row_ink_225_loose = content_225[y0:y1, x0:x1].sum(axis=1) / rw
+                    # Threshold raised from 0.30 → 0.40: the bbox-tightening
+                    # (removing the page's white margin columns) raises the
+                    # per-row ink fraction in true gutters by ~0.04-0.10.
+                    # E.g. TFTC #02 p36 (black bleed-bottom panel) has gutter
+                    # rows at ~0.28 full-width but ~0.32 cropped.  We compensate
+                    # by raising the run threshold AND requiring the run to
+                    # contain at least one VERY low row (< 0.30) — a real
+                    # gutter has a clear low point, not a flat dim region.
+                    runs_loose = find_gutter_runs(row_ink_225_loose, max(ink_ratio, 0.40), min_gutter_v)
+                    band_l = max(min_gutter_v, 10)
+                    loose_strips: List[Tuple[int, int]] = []
+                    sandwich_cuts_loose: List[Tuple[int, int]] = []
+                    for cs, ce in runs_loose:
+                        # Min-deepness check: real gutter has a clear low point.
+                        # A flat dim region (e.g. shaded sky inside a panel)
+                        # would have min ≈ mean, which wouldn't dip below 0.30.
+                        run_min = float(row_ink_225_loose[cs:ce].min())
+                        if run_min >= 0.30:
+                            continue
+                        above_lo = max(0, cs - band_l * 2)
+                        above_hi = max(0, cs - 2)
+                        below_lo = min(rh, ce + 2)
+                        below_hi = min(rh, ce + band_l * 2)
+                        if above_hi - above_lo < band_l or below_hi - below_lo < band_l:
+                            continue
+                        above_peak = float(row_ink_225_loose[above_lo:above_hi].max())
+                        below_peak = float(row_ink_225_loose[below_lo:below_hi].max())
+                        gut_mean = float(row_ink_225_loose[cs:ce].mean())
+                        # Need a strong peak (panel content / border row) on
+                        # at least one side and a sharp drop into the gutter.
+                        # Many comics lack a thick border line on the panel
+                        # whose content side faces the gutter (e.g. a crowd
+                        # panel that starts with white sky).  Require the
+                        # OTHER (non-peak) side to contain at least some
+                        # non-trivial content too (mean ≥ 0.20) so we don't
+                        # split inside pure whitespace.
+                        side_mean_above = float(row_ink_225_loose[:cs].mean()) if cs > 0 else 0.0
+                        side_mean_below = float(row_ink_225_loose[ce:].mean()) if ce < rh else 0.0
+                        strongest_peak = max(above_peak, below_peak)
+                        if strongest_peak > 0.85 \
+                                and (strongest_peak - gut_mean) >= 0.40 \
+                                and side_mean_above > 0.20 and side_mean_below > 0.20:
+                            sandwich_cuts_loose.append((cs, ce))
+                    prev_loose = 0
+                    for cs, ce in sandwich_cuts_loose:
+                        if cs - prev_loose >= min_panel_h:
+                            loose_strips.append((prev_loose, cs))
+                        prev_loose = ce
+                    if rh - prev_loose >= min_panel_h:
+                        loose_strips.append((prev_loose, rh))
+                    if len(loose_strips) > len(strips):
+                        strips = loose_strips
+                        _use_direct_leaf = True
+                        for _s, _e in loose_strips:
+                            needs_border_split.append((y0 + _s, y0 + _e))
                 # Thin-gap fallback (depth ≤ 1): detect single-row white gaps
                 # between high-ink regions.  Some comics (e.g. Papercutz TFTC)
                 # reduce the whitespace between rows to just 1 pure-white pixel
@@ -385,6 +451,102 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                                     for _s, _e in gap_strips:
                                         thin_gap_confirmed.append((y0 + _s, y0 + _e))
                                 break
+                # Border-sandwich fallback (depth 0, h-axis): detect real panel
+                # boundaries that have decorative speckling in the gutter.
+                # Pattern: dark band (>=0.85 ink, >=min_gutter_v rows) → medium
+                # gutter band (<0.50 ink, >=min_gutter_v rows) → dark band
+                # (>=0.85 ink, >=min_gutter_v rows).  This sandwich is highly
+                # specific to bordered panel layouts where the gutter contains
+                # JPEG noise or border ornamentation that pushes its ink above
+                # the standard thresholds.  TFTC v2 #01 page 11 has gutter ink
+                # ~0.32–0.46 between thick black panel borders.
+                if len(strips) < 2 and depth == 0:
+                    band = max(min_gutter_v, 7)
+                    candidate_runs = find_gutter_runs(row_ink, 0.50, min_gutter_v)
+                    sandwich_cuts: List[Tuple[int, int]] = []
+                    for cs, ce in candidate_runs:
+                        above_lo = max(0, cs - band * 2)
+                        above_hi = max(0, cs - 2)
+                        below_lo = min(rh, ce + 2)
+                        below_hi = min(rh, ce + band * 2)
+                        if above_hi - above_lo < band or below_hi - below_lo < band:
+                            continue
+                        if (float(row_ink[above_lo:above_hi].mean()) > 0.85 and
+                            float(row_ink[below_lo:below_hi].mean()) > 0.85):
+                            sandwich_cuts.append((cs, ce))
+                    sandwich_strips: List[Tuple[int, int]] = []
+                    prev_s = 0
+                    for cs, ce in sandwich_cuts:
+                        if cs - prev_s >= min_panel_h:
+                            sandwich_strips.append((prev_s, cs))
+                        prev_s = ce
+                    if rh - prev_s >= min_panel_h:
+                        sandwich_strips.append((prev_s, rh))
+                    if len(sandwich_strips) > len(strips):
+                        strips = sandwich_strips
+                # Oversized-gap guard: a real horizontal gutter is narrow (a few %
+                # of page height).  If the vertical distance between two strips
+                # is wider than a minimum panel, that "gutter" is EITHER:
+                #   (a) a legitimate wide gutter region between rows where
+                #       caption boxes / speech-bubble tails poke into the
+                #       gutter space, leaving multiple distinct low-ink runs
+                #       separated by thin sub-strips < min_panel_h, OR
+                #   (b) a single panel mis-classified as background (e.g. dark
+                #       mood lighting between rows where a long span has low
+                #       ink across the whole panel).
+                # Case (a) → 2+ distinct low-ink runs inside the gap → accept.
+                # Case (b) → only 1 contiguous low-ink run in the gap → reject.
+                if len(strips) >= 2:
+                    bad_gap = False
+                    for _i in range(len(strips) - 1):
+                        _gs = strips[_i][1]
+                        _ge = strips[_i + 1][0]
+                        if _ge - _gs <= min_panel_h:
+                            continue
+                        _gap_runs = find_gutter_runs(row_ink[_gs:_ge], ink_ratio, min_gutter_v)
+                        if len(_gap_runs) >= 2:
+                            continue
+                        bad_gap = True
+                        break
+                    if bad_gap:
+                        strips = []
+                # Border-continuity guard (depth ≥ 1 H-axis): mirror of the
+                # V-axis guard.  A REAL panel H-gutter BREAKS the parent
+                # strip's left+right panel-border lines at the gutter row.  A
+                # FAKE H-gutter has the panel's left/right border running
+                # CONTINUOUSLY across the gutter rows.
+                if len(strips) >= 2 and depth >= 1:
+                    scan = min(12, rw // 2)
+                    left_col_ink = region[:, :scan].mean(axis=0)
+                    right_col_ink = region[:, rw - scan:].mean(axis=0)
+                    left_idx = int(np.argmax(left_col_ink))
+                    right_idx = int(np.argmax(right_col_ink)) + (rw - scan)
+                    band = 3
+                    left_strip = region[:, max(0, left_idx - 1):left_idx + band]
+                    right_strip = region[:, max(0, right_idx - band + 1):right_idx + 2]
+                    left_avg = float(left_strip.mean())
+                    right_avg = float(right_strip.mean())
+                    if left_avg > 0.70 and right_avg > 0.70:
+                        left_rows = left_strip.mean(axis=1)
+                        right_rows = right_strip.mean(axis=1)
+                        merged_h: List[Tuple[int, int]] = []
+                        prev_s = strips[0][0]
+                        prev_e = strips[0][1]
+                        for i in range(len(strips) - 1):
+                            gs = strips[i][1]
+                            ge = strips[i + 1][0]
+                            left_min = float(left_rows[gs:ge].min()) if ge > gs else 1.0
+                            right_min = float(right_rows[gs:ge].min()) if ge > gs else 1.0
+                            if left_min > 0.50 or right_min > 0.50:
+                                # Border continuous across gutter → merge strips.
+                                prev_e = strips[i + 1][1]
+                            else:
+                                merged_h.append((prev_s, prev_e))
+                                prev_s = strips[i + 1][0]
+                                prev_e = strips[i + 1][1]
+                        merged_h.append((prev_s, prev_e))
+                        if len(merged_h) < len(strips):
+                            strips = merged_h
                 if len(strips) >= 2:
                     out: List[Tuple[int, int, int, int]] = []
                     for s, e in strips:
@@ -432,6 +594,99 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                         strips2_v.append((prev2_v, rw))
                     if len(strips2_v) > len(strips_v):
                         strips_v = strips2_v
+                # Oversized-gap guard: a real vertical gutter is narrow (a few %
+                # of page width).  If the horizontal distance between two strips
+                # is wider than a minimum panel, that "gutter" is EITHER:
+                #   (a) a legitimate wide gutter region between columns where
+                #       speech-bubble tails / captions poke into the gutter,
+                #       leaving multiple distinct low-ink runs separated by
+                #       thin sub-strips < min_panel_w, OR
+                #   (b) a single panel mis-classified as background (e.g. dark
+                #       space around a figure on a single wide panel).
+                # Case (a) → 2+ distinct low-ink runs inside the gap → accept.
+                # Case (b) → only 1 contiguous low-ink run in the gap → reject.
+                if len(strips_v) >= 2:
+                    bad_gap_v = False
+                    for _i in range(len(strips_v) - 1):
+                        _gs = strips_v[_i][1]
+                        _ge = strips_v[_i + 1][0]
+                        if _ge - _gs <= min_panel_w:
+                            continue
+                        _gap_runs_v = find_gutter_runs(col_ink[_gs:_ge], ink_ratio, min_gutter_h)
+                        if len(_gap_runs_v) >= 2:
+                            continue
+                        bad_gap_v = True
+                        break
+                    if bad_gap_v:
+                        strips_v = []
+                # Border-continuity guard (depth ≥ 1 V-axis): a REAL panel
+                # V-gutter at column g BREAKS the parent strip's top/bottom
+                # panel-border lines at column g (because the border belongs to
+                # the LEFT panel and ends just before g, then the RIGHT panel's
+                # border starts just after g, leaving a low-ink gap at g).  A
+                # FAKE V-gutter inside a single wide panel has the parent
+                # panel's top+bottom border lines running CONTINUOUSLY across g
+                # (high-ink at the very top and bottom rows at column g).
+                # If the parent strip has high-ink edges (it's a bordered
+                # panel) AND any gutter column has high-ink at BOTH the top
+                # and bottom edge rows, reject — that gutter bisects a single
+                # bordered panel (e.g. TFTC #1 p13 row 3: sky between woman
+                # and man inside a single wide panel).
+                if len(strips_v) >= 2 and depth >= 1:
+                    # Find the strongest top and bottom border rows within the
+                    # first/last 12 rows of the parent strip.  The depth-0 split
+                    # can leave the strip starting/ending 1–2 rows inside the
+                    # inter-row gutter, so a fixed edge_band of 3 rows can miss
+                    # the actual panel border line.
+                    scan = min(12, rh // 2)
+                    top_row_ink = region[:scan, :].mean(axis=1)
+                    bot_row_ink = region[rh - scan:, :].mean(axis=1)
+                    top_idx = int(np.argmax(top_row_ink))
+                    bot_idx = int(np.argmax(bot_row_ink)) + (rh - scan)
+                    band = 3
+                    top_strip = region[max(0, top_idx - 1):top_idx + band, :]
+                    bot_strip = region[max(0, bot_idx - band + 1):bot_idx + 2, :]
+                    top_avg = float(top_strip.mean())
+                    bot_avg = float(bot_strip.mean())
+                    # Only apply guard when the parent strip itself looks
+                    # bordered (both top and bottom edges > 70% ink).
+                    if top_avg > 0.70 and bot_avg > 0.70:
+                        top_cols = top_strip.mean(axis=0)
+                        bot_cols = bot_strip.mean(axis=0)
+                        filtered: List[Tuple[int, int]] = []
+                        for i in range(len(strips_v) - 1):
+                            gs = strips_v[i][1]
+                            ge = strips_v[i + 1][0]
+                            # Check whether the border survives across this gutter.
+                            # A REAL panel V-split interrupts BOTH borders.  If
+                            # either border is continuous (> 0.50 ink at every
+                            # gutter col), the gutter is bisecting a single
+                            # bordered panel.
+                            top_min = float(top_cols[gs:ge].min()) if ge > gs else 1.0
+                            bot_min = float(bot_cols[gs:ge].min()) if ge > gs else 1.0
+                            if top_min > 0.50 or bot_min > 0.50:
+                                # Border continuous across gutter → fake gutter,
+                                # merge the two adjacent strips by skipping this
+                                # split point.
+                                if filtered and filtered[-1][1] == strips_v[i][0]:
+                                    filtered[-1] = (filtered[-1][0], strips_v[i + 1][1])
+                                else:
+                                    filtered.append((strips_v[i][0], strips_v[i + 1][1]))
+                            else:
+                                if filtered and filtered[-1][1] == strips_v[i][0]:
+                                    pass
+                                else:
+                                    filtered.append(strips_v[i])
+                                filtered.append(strips_v[i + 1])
+                        # Deduplicate / merge
+                        merged: List[Tuple[int, int]] = []
+                        for s_, e_ in filtered:
+                            if merged and merged[-1][1] >= s_:
+                                merged[-1] = (merged[-1][0], max(merged[-1][1], e_))
+                            else:
+                                merged.append((s_, e_))
+                        if len(merged) < len(strips_v):
+                            strips_v = merged
                 if len(strips_v) >= 2:
                     out = []
                     for s, e in strips_v:
@@ -552,7 +807,7 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
     # height/width of the detected panel — those are the shared border lines.
     # Guard: only try if the top and bottom rows of the panel are themselves
     # high-ink (≥80%), confirming the panel has a rectangular border frame.
-    def _split_at_borders(px0: int, py0: int, px1: int, py1: int, only_white_gutter: bool = False) -> List[Tuple[int, int, int, int]]:
+    def _split_at_borders(px0: int, py0: int, px1: int, py1: int, only_white_gutter: bool = False, strict_adjacency: bool = False) -> List[Tuple[int, int, int, int]]:
         region = content[py0:py1, px0:px1].astype(np.float32)
         rh, rw = region.shape
         border_thr = 0.95  # column/row must be ≥95% dark to count as a border line
@@ -561,6 +816,18 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
             edge = max(int(length * 0.05), 8)
             min_run = max(3, int(length * 0.005))  # border must be ≥3px or 0.5% of dimension
             max_run = max(8, int(length * 0.012))   # real panel borders are thin (3-10px); false art runs are wider
+            # Adjacent-ink guard (used only when strict_adjacency=True): a real
+            # shared panel border separates two sub-panels of artwork whose
+            # adjacent column avg ink is moderate (typically < 0.80) due to
+            # speech bubbles + lighter colors.  A FAKE border found inside a
+            # dark-background scene (a closet edge on TFTC #1 p8) has adjacent
+            # columns that are ALSO dark (>0.85+) because the scene extends
+            # through them.  Only applied in the panels_split loop where we're
+            # FURTHER splitting an already-detected panel — the splash-
+            # candidate path skips this guard so dark-background splashes can
+            # still be split (e.g. TFTC #1 p23 caption splash).
+            adj_band = max(8, int(length * 0.01))
+            adj_dark_thr = 0.80
             divs: List[Tuple[int, int]] = []
             in_run, start = False, 0
             for i, v in enumerate(ink_1d):
@@ -572,7 +839,18 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                     if in_run:
                         run_len = i - start
                         if min_run <= run_len <= max_run and start > edge and i < length - edge:
-                            divs.append((start, i))
+                            keep = True
+                            if strict_adjacency:
+                                lo_lo = max(0, start - adj_band)
+                                lo_hi = start
+                                hi_lo = i
+                                hi_hi = min(length, i + adj_band)
+                                left_avg = float(ink_1d[lo_lo:lo_hi].mean()) if lo_hi > lo_lo else 0.0
+                                right_avg = float(ink_1d[hi_lo:hi_hi].mean()) if hi_hi > hi_lo else 0.0
+                                if left_avg >= adj_dark_thr and right_avg >= adj_dark_thr:
+                                    keep = False
+                            if keep:
+                                divs.append((start, i))
                         in_run = False
             if in_run:
                 run_len = length - start
@@ -630,9 +908,23 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                 cw, ch = sx1 - sx0, sy1 - sy0
                 if cw >= min_panel_w and ch >= min_panel_h:
                     found.append(Panel(sx0, sy0, cw, ch, sx0 + cw // 2, sy0 + ch // 2))
-            # Only commit if we found 2+ distinct panels; otherwise fall through to
-            # dark-background flood-fill which handles pages with no detectable borders.
-            if len(found) >= 2:
+            # Only commit if dropping undersized sub-rects doesn't leave a
+            # panel-sized hole between adjacent survivors.  A gap >= min_panel_w
+            # (column-split) or >= min_panel_h (row-split) means the dropped
+            # slivers were where a real panel should have been (e.g. the central
+            # yellow disk on TFTC #1 page 3 bottom row).  In that case the
+            # "borders" were art content (figure outlines), not real panel
+            # borders, so reject the split entirely.
+            ok = len(found) >= 2
+            if ok and len(found) < len(sub_rects):
+                for i in range(len(found) - 1):
+                    a, b = found[i], found[i + 1]
+                    gx = b.x - (a.x + a.w)
+                    gy = b.y - (a.y + a.h)
+                    if gx > min_panel_w or gy > min_panel_h:
+                        ok = False
+                        break
+            if ok:
                 panels.extend(found)
         if _os.environ.get("HARVEST_DEBUG"):
             print(f"  [DBG] splash-border-split: {len(sub_rects)} rects → {len(panels)} panels")
@@ -765,7 +1057,17 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
                     cw, ch = sx1 - sx0, sy1 - sy0
                     if cw >= min_panel_w and ch >= min_panel_h:
                         added_panels.append(Panel(sx0, sy0, cw, ch, sx0 + cw // 2, sy0 + ch // 2))
-                if len(added_panels) >= 2:
+                # Same "no panel-sized hole" rule as the splash-candidate path.
+                ok = len(added_panels) >= 2
+                if ok and len(added_panels) < len(sub_rects):
+                    for i in range(len(added_panels) - 1):
+                        a, b = added_panels[i], added_panels[i + 1]
+                        gx = b.x - (a.x + a.w)
+                        gy = b.y - (a.y + a.h)
+                        if gx > min_panel_w or gy > min_panel_h:
+                            ok = False
+                            break
+                if ok:
                     panels_split.extend(added_panels)
                     continue
             panels_split.append(p)
@@ -777,14 +1079,24 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
         if is_wide or is_tall:
             top_ink = float(content[p.y:p.y + 15, p.x:p.x + p.w].mean())
             if top_ink > 0.85:
-                sub_rects = _split_at_borders(p.x, p.y, p.x + p.w, p.y + p.h)
+                sub_rects = _split_at_borders(p.x, p.y, p.x + p.w, p.y + p.h, strict_adjacency=True)
                 if len(sub_rects) > 1:
                     added_panels = []
                     for (sx0, sy0, sx1, sy1) in sub_rects:
                         cw, ch = sx1 - sx0, sy1 - sy0
                         if cw >= min_panel_w and ch >= min_panel_h:
                             added_panels.append(Panel(sx0, sy0, cw, ch, sx0 + cw // 2, sy0 + ch // 2))
-                    if len(added_panels) >= 2:
+                    # Same "no panel-sized hole" rule as the splash-candidate path.
+                    ok = len(added_panels) >= 2
+                    if ok and len(added_panels) < len(sub_rects):
+                        for i in range(len(added_panels) - 1):
+                            a, b = added_panels[i], added_panels[i + 1]
+                            gx = b.x - (a.x + a.w)
+                            gy = b.y - (a.y + a.h)
+                            if gx > min_panel_w or gy > min_panel_h:
+                                ok = False
+                                break
+                    if ok:
                         panels_split.extend(added_panels)
                         continue  # replaced by valid sub-panels
         panels_split.append(p)
@@ -897,25 +1209,38 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
         # regular.  CV = σ/μ — low CV means all panels are the same size.
         cv = float(areas.std() / areas.mean()) if areas.mean() > 0 else 0.0
         uniform_threshold = 0.15
+        # Mean panel area as fraction of page — the size discriminator between
+        # a comic grid (few large panels, mean ≥10% of page) and a catalog /
+        # gallery (many small thumbnails, mean ≪10%).  Without this guard the
+        # uniformity / grid rules wipe legitimate uniform comic layouts.
+        mean_area_frac = float(areas.mean()) / page_area if page_area > 0 else 0.0
         # Only apply uniformity check for 6+ panels: fewer panels may legitimately
-        # have similar sizes (e.g. a 2×2 or 2×3 comic layout).
-        if len(panels) >= 6 and cv < uniform_threshold:
+        # have similar sizes (e.g. a 2×2 or 2×3 comic layout).  Also require the
+        # panels to be small (mean < 8% of page) — large uniform panels are
+        # comic, not catalog.
+        if len(panels) >= 6 and cv < uniform_threshold and mean_area_frac < 0.08:
             if _os.environ.get("HARVEST_DEBUG"):
-                print(f"  [DBG] uniform filter wiped panels: cv={cv:.3f}")
+                print(f"  [DBG] uniform filter wiped panels: cv={cv:.3f}, mean_area_frac={mean_area_frac:.3f}")
             panels = []  # looks like a thumbnail grid / catalog page
 
         # Geometric grid check: if panel centres snap to a rows×cols grid AND
         # panels are uniform in size, it's almost certainly a gallery layout.
-        # Require both geometric alignment AND low CV to avoid false-positive
-        # rejection of valid 2×2 or 2×3 comic layouts.
+        # Require all of: geometric alignment, low CV, AND small mean area —
+        # the size guard preserves valid 2×2 / 2×3 comic page layouts (where
+        # each panel is ≥10% of the page) while still wiping dense catalogs.
         if panels and len(panels) >= 4:
             tol = 0.12
             bin_x = lambda p: round(p.centerX / (w * tol))
             bin_y = lambda p: round(p.centerY / (h * tol))
             n_cols = len(set(bin_x(p) for p in panels))
             n_rows = len(set(bin_y(p) for p in panels))
-            if n_rows >= 2 and n_cols >= 2 and n_rows * n_cols == len(panels) and cv < 0.25:
-                panels = []  # regular uniform grid → not comic panels
+            if (n_rows >= 2 and n_cols >= 2
+                    and n_rows * n_cols == len(panels)
+                    and cv < 0.25
+                    and mean_area_frac < 0.08):
+                if _os.environ.get("HARVEST_DEBUG"):
+                    print(f"  [DBG] grid filter wiped panels: {n_rows}×{n_cols}, cv={cv:.3f}, mean_area_frac={mean_area_frac:.3f}")
+                panels = []  # regular uniform grid of small tiles → catalog
 
         # Total coverage: if surviving panels cover less than 35 % of the page,
         # there's too much non-panel content (text blocks, blank space) — treat

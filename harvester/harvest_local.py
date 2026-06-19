@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from harvest_utils import PAGE_EXTS, slugify, parse_archive_name, _write_jpeg  # type: ignore
-from harvest import detect_panels as _opencv_detect, Panel  # type: ignore
+from harvest import detect_panels as _opencv_detect, Panel, detect_balloons_and_captions as _detect_balloons  # type: ignore
 from detect_gemini import detect_panels_gemini  # type: ignore
 
 SEVENZIP = next(
@@ -103,6 +103,9 @@ def _build_page_records(pages: list[Path]) -> list[dict]:
         # Cover (index 0) is always full-page — never panel-snap
         if idx == 0:
             panels = []
+        elif not panels:
+            # Non-cover with no panels from Gemini or OpenCV → try balloon/caption fallback
+            panels = _detect_balloons(p)
         records.append({
             "file": p.name,
             "width": w,

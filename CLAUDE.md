@@ -6,20 +6,38 @@
 - Tests: Vitest (run `npm test`); build: `npm run build` (runs `tsc --noEmit` first)
 - `noUnusedLocals` and `noUnusedParameters` are both `true` in tsconfig
 
-## After every `git push` — check deployment status
+## PowerShell — avoid Set-Location compound commands
 
-GitHub Pages deploy takes ~1–2 minutes after push. Always run this after pushing:
+`PowerShell(*)` is in `.claude/settings.json` allowlist, but Claude Code has a
+hardcoded security check that blocks `Set-Location "..."; other-command` compound
+chains regardless of the allowlist. To avoid permission prompts on every command,
+**never use `Set-Location "C:\Stuff\NetComix"; <cmd>`**. Use flags instead:
 
 ```powershell
-Set-Location "C:\Stuff\NetComix"
-gh run list --limit 2 --json status,conclusion,name,url
+# ✅ npm — use --prefix
+npm --prefix "C:\Stuff\NetComix" test
+npm --prefix "C:\Stuff\NetComix" run build
+
+# ✅ git — use -C
+git -C "C:\Stuff\NetComix" push
+git -C "C:\Stuff\NetComix" add src/components/Foo.tsx
+git -C "C:\Stuff\NetComix" commit -m "message"
+git -C "C:\Stuff\NetComix" log --oneline -5
+
+# ✅ gh — use --repo or run from CWD set at session start
+gh -R billybell991/netcomix run list --limit 3 --json status,conclusion,name,url
+
+# ✅ file ops — use absolute paths directly
+Get-Content "C:\Stuff\NetComix\public\comics\library.json"
+Get-ChildItem "C:\Stuff\NetComix\public\comics" -Recurse
 ```
 
-To **wait for the deploy to finish** before declaring it done:
+## After every `git push` — check deployment status
+
+GitHub Pages deploy takes ~1–2 minutes. Always run this after pushing:
 
 ```powershell
-Set-Location "C:\Stuff\NetComix"
-$runId = (gh run list --limit 1 --json databaseId | ConvertFrom-Json)[0].databaseId
+$runId = (gh -R billybell991/netcomix run list --limit 1 --json databaseId | ConvertFrom-Json)[0].databaseId
 gh run watch $runId --exit-status
 Write-Host "✅ Deployed to https://billybell991.github.io/netcomix/"
 ```
