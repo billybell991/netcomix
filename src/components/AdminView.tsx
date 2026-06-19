@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { latestScanRun, triggerScan, commitComicsToRepo, type WorkflowRun } from "../github-actions";
 import { isGithubConfigured } from "../config";
+import {
+  clearUploadLog,
+  getUploadLog,
+  getUploadLogText,
+  logUpload,
+  logUploadContext,
+  subscribeUploadLog,
+  type LogEntry,
+} from "../upload-log";
 
 interface Props {
   onBack: () => void;
@@ -40,7 +49,12 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadDone, setUploadDone] = useState(false);
+  const [logEntries, setLogEntries] = useState<LogEntry[]>(getUploadLog());
+  const [showLog, setShowLog] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => subscribeUploadLog(setLogEntries), []);
 
   const ghConfigured = isGithubConfigured();
   const isActive = run && (run.status === "queued" || run.status === "in_progress");
@@ -61,6 +75,9 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
     setUploadProgress(0);
     setUploadError(null);
     setUploadDone(false);
+    clearUploadLog();
+    setShowLog(true);
+    logUploadContext({ source: "AdminView.onUpload", fileCount: uploadFiles.length });
     try {
       await commitComicsToRepo(uploadFiles, setUploadProgress);
       setUploadDone(true);
@@ -68,10 +85,22 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
       await triggerScan();
       await refresh();
     } catch (e) {
+      logUpload("error", "AdminView.onUpload.caught", { error: e });
       setUploadError(String(e));
     } finally {
       setUploading(false);
     }
+  };
+
+  const copyLog = async () => {
+    const text = getUploadLogText();
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyStatus("Copied ✓");
+    } catch {
+      setCopyStatus("Copy failed — select text manually");
+    }
+    window.setTimeout(() => setCopyStatus(null), 2500);
   };
 
   const refresh = async () => {
@@ -192,6 +221,67 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
             {uploading ? "Committing…" : `Upload${uploadFiles.length > 0 ? ` (${uploadFiles.length})` : ""} & Scan`}
           </button>
           {!ghConfigured && <p style={{ color: "#888", fontSize: 12, marginTop: 6 }}>Configure GitHub in Setup to enable uploads.</p>}
+
+          {/* ── Upload diagnostics log ──────────────────────────── */}
+          <div style={{ marginTop: 16, borderTop: "1px solid #222", paddingTop: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <button
+                data-testid="toggle-upload-log"
+                onClick={() => setShowLog((v) => !v)}
+                style={{ background: "transparent", border: "1px solid #333", color: "#aaa", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}
+              >
+                {showLog ? "Hide" : "Show"} upload log ({logEntries.length})
+              </button>
+              {logEntries.length > 0 && (
+                <>
+                  <button
+                    data-testid="copy-upload-log"
+                    onClick={copyLog}
+                    style={{ background: "transparent", border: "1px solid #333", color: "#aaa", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}
+                  >
+                    Copy log
+                  </button>
+                  <button
+                    onClick={() => clearUploadLog()}
+                    style={{ background: "transparent", border: "1px solid #333", color: "#aaa", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}
+                  >
+                    Clear
+                  </button>
+                </>
+              )}
+              {copyStatus && <span style={{ color: "#888", fontSize: 12 }}>{copyStatus}</span>}
+            </div>
+            {showLog && (
+              <pre
+                data-testid="upload-log"
+                style={{
+                  marginTop: 8,
+                  maxHeight: 280,
+                  overflow: "auto",
+                  background: "#0a0a0a",
+                  border: "1px solid #222",
+                  borderRadius: 6,
+                  padding: 10,
+                  fontSize: 11,
+                  color: "#bbb",
+                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }}
+              >
+                {logEntries.length === 0
+                  ? "(no entries yet — start an upload)"
+                  : logEntries
+                      .map((e) => {
+                        const color = e.level === "error" ? "●" : e.level === "warn" ? "△" : "·";
+                        const time = e.iso.slice(11, 23); // HH:MM:SS.mmm
+                        const payload = e.data === undefined ? "" : "\n  " + JSON.stringify(e.data).slice(0, 400);
+                        return `${color} ${time} ${e.event}${payload}`;
+                      })
+                      .join("\n")}
+              </pre>
+            )}
+          </div>
         </section>
 
         <section style={{ marginBottom: 24 }}>
