@@ -47,6 +47,7 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState<string>("");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadDone, setUploadDone] = useState(false);
   const [logEntries, setLogEntries] = useState<LogEntry[]>(getUploadLog());
@@ -73,20 +74,27 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
     if (!uploadFiles.length) return;
     setUploading(true);
     setUploadProgress(0);
+    setUploadStatus("Starting…");
     setUploadError(null);
     setUploadDone(false);
     clearUploadLog();
     setShowLog(true);
     logUploadContext({ source: "AdminView.onUpload", fileCount: uploadFiles.length });
     try {
-      await commitComicsToRepo(uploadFiles, setUploadProgress);
+      await commitComicsToRepo(uploadFiles, {
+        pct: setUploadProgress,
+        status: setUploadStatus,
+      });
       setUploadDone(true);
+      setUploadStatus("Done — triggering scan…");
       setUploadFiles([]);
       await triggerScan();
       await refresh();
+      setUploadStatus("Scan triggered ✓");
     } catch (e) {
       logUpload("error", "AdminView.onUpload.caught", { error: e });
       setUploadError(String(e));
+      setUploadStatus("");
     } finally {
       setUploading(false);
     }
@@ -201,11 +209,48 @@ export function AdminView({ onBack, onOpenSetup }: Props) {
           )}
 
           {uploading && (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ height: 4, background: "#222", borderRadius: 2 }}>
-                <div style={{ height: "100%", width: `${Math.round(uploadProgress * 100)}%`, background: "#1f6feb", borderRadius: 2, transition: "width 0.2s" }} />
+            <div
+              style={{
+                marginTop: 10,
+                marginBottom: 8,
+                padding: "10px 12px",
+                background: "#0f1b30",
+                border: "1px solid #1f3a6e",
+                borderRadius: 8,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <span
+                  className="nc-dot-pulse"
+                  style={{ display: "inline-block", width: 10, height: 10, borderRadius: 5, background: "#1f6feb", flexShrink: 0 }}
+                />
+                <span style={{ color: "#cfe1ff", fontSize: 13, fontWeight: 500, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {uploadStatus || "Working…"}
+                </span>
+                <span style={{ color: "#8aa3c8", fontSize: 12, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
+                  {Math.round(uploadProgress * 100)}%
+                </span>
               </div>
-              <div style={{ color: "#888", fontSize: 11, marginTop: 4 }}>{Math.round(uploadProgress * 100)}% committed</div>
+              <div style={{ position: "relative", height: 8, background: "#0a1424", borderRadius: 4, overflow: "hidden" }}>
+                <div
+                  style={{
+                    height: "100%",
+                    width: `${Math.max(2, Math.round(uploadProgress * 100))}%`,
+                    background: "linear-gradient(90deg, #1f6feb, #4a8eff)",
+                    borderRadius: 4,
+                    transition: "width 0.25s ease-out",
+                  }}
+                />
+                {/* shimmer overlay so the bar still looks alive while a single chunk is uploading */}
+                <div
+                  className="nc-progress-bar-fill indeterminate"
+                  style={{
+                    position: "absolute", inset: 0,
+                    opacity: 0.35,
+                    background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent)",
+                  }}
+                />
+              </div>
             </div>
           )}
 

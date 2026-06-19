@@ -81,13 +81,75 @@ export async function latestScanRun(): Promise<WorkflowRun | null> {
 
 const CHUNK_SIZE = 15 * 1024 * 1024; // 15 MB raw → ~20 MB base64, well within the ~100 MB API limit
 
+/** Progress reporting for the upload pipeline. */
+export interface UploadProgress {
+  /** Total committed fraction, 0..1. */
+  pct?: (n: number) => void;
+  /** Human-readable "what's happening now" string, e.g. "Uploading chunk 2 of 5 — 4.1 / 15.0 MB (52 KB/s)". */
+  status?: (msg: string) => void;
+}
+
+function fmtMB(bytes: number): string {
+  return (bytes / 1024 / 1024).toFixed(1) + " MB";
+}
+function fmtRate(bytes: number, ms: number): string {
+  if (ms <= 0) return "";
+  const kbps = (bytes / 1024) / (ms / 1000);
+  if (kbps > 1024) return `${(kbps / 1024).toFixed(2)} MB/s`;
+  return `${kbps.toFixed(0)} KB/s`;
+}
+
+/**
+ * POST a JSON body via XMLHttpRequest so we can observe upload-byte progress.
+ * `fetch()` does not surface upload progress, which makes large chunks on slow
+ * connections look like the UI is stuck at 0%.
+ */
+function xhrPostJson(
+  url: string,
+  headers: Record<string, string>,
+  body: string,
+  onUploadProgress?: (loaded: number, total: number) => void,
+): Promise<{ status: number; ok: boolean; text: () => Promise<string>; json: () => Promise<unknown>; headers: { get: (k: string) => string | null } }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
+    if (onUploadProgress) {
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) onUploadProgress(ev.loaded, ev.total);
+      };
+    }
+    xhr.onload = () => {
+      const text = xhr.responseText;
+      resolve({
+        status: xhr.status,
+        ok: xhr.status >= 200 && xhr.status < 300,
+        text: async () => text,
+        json: async () => JSON.parse(text),
+        headers: {
+          get: (k: string) => xhr.getResponseHeader(k),
+        },
+      });
+    };
+    xhr.onerror = () => {
+      const err = new TypeError('Failed to fetch');
+      (err as unknown as { cause: unknown }).cause = { xhrStatus: xhr.status, xhrStatusText: xhr.statusText };
+      reject(err);
+    };
+    xhr.ontimeout = () => reject(new Error('Upload timed out'));
+    xhr.onabort = () => reject(new Error('Upload aborted'));
+    xhr.send(body);
+  });
+}
+
 /** Upload raw bytes to the Git Blobs API and return the blob sha. */
-async function uploadBlob(data: Blob, label?: string): Promise<string> {
+async function uploadBlob(data: Blob, label: string, chunkIdx: number, chunkTotal: number, progress?: UploadProgress): Promise<string> {
   const { ghOwner, ghRepo } = getConfig();
   const base = `${GH_API}/repos/${ghOwner}/${ghRepo}`;
   const url = `${base}/git/blobs`;
   const t0 = Date.now();
   logUpload('info', 'uploadBlob.start', { label, bytes: data.size, type: data.type, url });
+  progress?.status?.(`Preparing chunk ${chunkIdx} of ${chunkTotal} (${fmtMB(data.size)})…`);
 
   // 1) Read the blob as base64. Big chunks (~15 MB → ~20 MB base64) can OOM
   //    on memory-constrained mobile browsers — log the exact step that fails.
@@ -105,15 +167,23 @@ async function uploadBlob(data: Blob, label?: string): Promise<string> {
   }
   logUpload('debug', 'uploadBlob.base64Ready', { label, base64Len: base64.length, ms: Date.now() - t0 });
 
-  // 2) Fetch /git/blobs. This is where "TypeError: failed to fetch" lands —
-  //    capture the exception name+message+cause+onLine state.
-  let res: Response;
+  const body = JSON.stringify({ content: base64, encoding: 'base64' });
+  const tUp = Date.now();
+
+  // 2) POST via XHR so we get per-byte upload progress on slow links.
+  let res: { status: number; ok: boolean; text: () => Promise<string>; json: () => Promise<unknown>; headers: { get: (k: string) => string | null } };
   try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: base64, encoding: 'base64' }),
-    });
+    res = await xhrPostJson(
+      url,
+      { ...authHeaders() as Record<string, string>, 'Content-Type': 'application/json' },
+      body,
+      (loaded, total) => {
+        const elapsed = Date.now() - tUp;
+        progress?.status?.(
+          `Uploading chunk ${chunkIdx} of ${chunkTotal} — ${fmtMB(loaded)} / ${fmtMB(total)} (${fmtRate(loaded, elapsed)})`
+        );
+      },
+    );
   } catch (e) {
     logUpload('error', 'uploadBlob.fetchThrew', {
       label, url, bytes: data.size, base64Len: base64.length, ms: Date.now() - t0,
@@ -136,6 +206,11 @@ async function uploadBlob(data: Blob, label?: string): Promise<string> {
   if (!res.ok) {
     const b = await res.text();
     logUpload('error', 'uploadBlob.httpError', { label, status: res.status, body: b.slice(0, 500), requestId: reqId });
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(
+        `GitHub ${res.status} — authentication failed. Your Personal Access Token is missing, expired, or lacks "Contents: Read and write" on ${ghOwner}/${ghRepo}. Go to Setup and re-enter a fresh token.`
+      );
+    }
     throw new Error(`GitHub ${res.status}: ${b.slice(0, 300)}`);
   }
   const { sha } = await res.json() as { sha: string };
@@ -172,15 +247,20 @@ async function loggedFetch(step: string, url: string, init?: RequestInit): Promi
 async function pushEntries(
   entries: Array<{ path: string; sha: string }>,
   message: string,
-  onProgress?: (pct: number) => void,
+  progress?: UploadProgress,
 ): Promise<void> {
   const { ghOwner, ghRepo } = getConfig();
   const base = `${GH_API}/repos/${ghOwner}/${ghRepo}`;
   logUpload('info', 'pushEntries.start', { entryCount: entries.length, message });
   for (let attempt = 0; attempt < 10; attempt++) {
-    if (attempt > 0) await new Promise(r => setTimeout(r, 3000 + attempt * 2000));
+    if (attempt > 0) {
+      const waitMs = 3000 + attempt * 2000;
+      progress?.status?.(`Branch was updated by another commit — retrying in ${Math.round(waitMs / 1000)}s (attempt ${attempt + 1}/10)…`);
+      await new Promise(r => setTimeout(r, waitMs));
+    }
     logUpload('info', 'pushEntries.attempt', { attempt: attempt + 1 });
 
+    progress?.status?.('Reading current branch HEAD…');
     const refRes = await loggedFetch('pushEntries.ref', `${base}/git/ref/heads/main`, { headers: authHeaders() });
     if (!refRes.ok) { const b = await refRes.text(); logUpload('error', 'pushEntries.ref.httpError', { status: refRes.status, body: b.slice(0, 300) }); throw new Error(`GitHub ${refRes.status}: ${b.slice(0, 300)}`); }
     const { object: { sha: headSha } } = await refRes.json() as { object: { sha: string } };
@@ -189,6 +269,7 @@ async function pushEntries(
     if (!commitRes.ok) { const b = await commitRes.text(); logUpload('error', 'pushEntries.commitRead.httpError', { status: commitRes.status, body: b.slice(0, 300) }); throw new Error(`GitHub ${commitRes.status}: ${b.slice(0, 300)}`); }
     const { tree: { sha: treeSha } } = await commitRes.json() as { tree: { sha: string } };
 
+    progress?.status?.(`Building tree (${entries.length} file${entries.length === 1 ? '' : 's'})…`);
     const treeRes = await loggedFetch('pushEntries.tree', `${base}/git/trees`, {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
@@ -200,6 +281,7 @@ async function pushEntries(
     if (!treeRes.ok) { const b = await treeRes.text(); logUpload('error', 'pushEntries.tree.httpError', { status: treeRes.status, body: b.slice(0, 300) }); throw new Error(`GitHub ${treeRes.status}: ${b.slice(0, 300)}`); }
     const { sha: newTreeSha } = await treeRes.json() as { sha: string };
 
+    progress?.status?.('Creating commit…');
     const newCommitRes = await loggedFetch('pushEntries.commitCreate', `${base}/git/commits`, {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
@@ -208,7 +290,8 @@ async function pushEntries(
     if (!newCommitRes.ok) { const b = await newCommitRes.text(); logUpload('error', 'pushEntries.commitCreate.httpError', { status: newCommitRes.status, body: b.slice(0, 300) }); throw new Error(`GitHub ${newCommitRes.status}: ${b.slice(0, 300)}`); }
     const { sha: newCommitSha } = await newCommitRes.json() as { sha: string };
 
-    onProgress?.(0.95);
+    progress?.pct?.(0.97);
+    progress?.status?.('Pushing commit to main…');
     const updateRes = await loggedFetch('pushEntries.refUpdate', `${base}/git/refs/heads/main`, {
       method: 'PATCH',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
@@ -219,7 +302,8 @@ async function pushEntries(
       continue; // HEAD moved; re-read and retry
     }
     if (!updateRes.ok) { const b = await updateRes.text(); logUpload('error', 'pushEntries.refUpdate.httpError', { status: updateRes.status, body: b.slice(0, 300) }); throw new Error(`GitHub ${updateRes.status}: ${b.slice(0, 300)}`); }
-    onProgress?.(1.0);
+    progress?.pct?.(1.0);
+    progress?.status?.('Commit pushed ✓');
     logUpload('info', 'pushEntries.done', { commitSha: newCommitSha });
     return;
   }
@@ -233,8 +317,13 @@ async function pushEntries(
  */
 export async function commitComicsToRepo(
   files: File[],
-  onProgress?: (pct: number) => void,
+  progress?: UploadProgress | ((pct: number) => void),
 ): Promise<void> {
+  // Backwards compat: allow a plain (pct) => void callback.
+  const prog: UploadProgress = typeof progress === 'function'
+    ? { pct: progress }
+    : (progress ?? {});
+
   const t0 = Date.now();
   logUpload('info', 'commitComicsToRepo.start', {
     fileCount: files.length,
@@ -242,6 +331,7 @@ export async function commitComicsToRepo(
     totalBytes: files.reduce((s, f) => s + f.size, 0),
     chunkSize: CHUNK_SIZE,
   });
+  prog.status?.(`Preparing ${files.length} file${files.length === 1 ? '' : 's'}…`);
 
   // Build the full list of (path, data) entries, expanding large files into chunks
   const entryDefs: Array<{ path: string; data: Blob }> = [];
@@ -267,10 +357,15 @@ export async function commitComicsToRepo(
   const entries: Array<{ path: string; sha: string }> = [];
   try {
     for (let i = 0; i < total; i++) {
-      const label = `${entryDefs[i].path} (${i + 1}/${total})`;
-      const sha = await uploadBlob(entryDefs[i].data, label);
+      const sha = await uploadBlob(entryDefs[i].data, entryDefs[i].path, i + 1, total, {
+        // Per-chunk byte progress is forwarded as a status string. The overall
+        // pct only ticks once per completed chunk (XHR upload-progress is
+        // per-request, not per-pipeline) — the status string fills the gap.
+        status: prog.status,
+      });
       entries.push({ path: entryDefs[i].path, sha });
-      onProgress?.((i + 1) / total * 0.88);
+      prog.pct?.((i + 1) / total * 0.88);
+      prog.status?.(`Chunk ${i + 1} of ${total} uploaded ✓`);
     }
   } catch (e) {
     logUpload('error', 'commitComicsToRepo.blobUploadFailed', { uploadedSoFar: entries.length, totalEntries: total, error: e });
@@ -282,7 +377,10 @@ export async function commitComicsToRepo(
     ? `add comic: ${files[0].name}`
     : `add comics: ${files.map(f => f.name).join(', ')}`;
   try {
-    await pushEntries(entries, msg, (pct) => onProgress?.(0.88 + pct * 0.12));
+    await pushEntries(entries, msg, {
+      pct: (p) => prog.pct?.(0.88 + p * 0.12),
+      status: prog.status,
+    });
   } catch (e) {
     logUpload('error', 'commitComicsToRepo.pushFailed', { error: e });
     throw e;
