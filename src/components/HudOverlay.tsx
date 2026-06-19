@@ -73,9 +73,14 @@ export function HudOverlay({
           <SettingRow label="Button visibility">
             <input
               data-testid="opacity-slider"
-            onChange={(e) => set("buttonOpacity", parseFloat(e.target.value))}
-          />
-        </SettingRow>
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={settings.buttonOpacity}
+              onChange={(e) => set("buttonOpacity", parseFloat(e.target.value))}
+            />
+          </SettingRow>
 
         <SettingRow label="Sounds">
           <Toggle checked={settings.sounds} onChange={(v) => set("sounds", v)} testId="sounds-toggle" />
