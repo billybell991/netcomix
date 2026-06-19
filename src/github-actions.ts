@@ -23,6 +23,89 @@ function authHeaders(): HeadersInit {
   };
 }
 
+/**
+ * Fast pre-flight check that the configured token can both (a) authenticate
+ * and (b) write to the target repo. Costs ~1 KB / ~1 second — a tiny price
+ * compared with discovering a bad token after a 3-minute chunk upload.
+ *
+ * Strategy: try to create an empty tree based on main's current tree. This
+ * requires the same "Contents: Read and write" permission as the real upload
+ * but transfers almost no bytes. A successful response (201) or a benign
+ * 422 ("tree must contain at least one entry") both prove the token is good.
+ */
+export async function preflightAuth(): Promise<void> {
+  const { ghOwner, ghRepo } = getConfig();
+  const base = `${GH_API}/repos/${ghOwner}/${ghRepo}`;
+  logUpload("info", "preflightAuth.start", { repo: `${ghOwner}/${ghRepo}` });
+
+  // 1) Cheapest possible auth check: read the repo's default branch ref.
+  //    Returns 401 if the token doesn't exist, 404 if it can't see the repo,
+  //    200 if at least Metadata read is granted.
+  let refRes: Response;
+  try {
+    refRes = await fetch(`${base}/git/ref/heads/main`, { headers: authHeaders() });
+  } catch (e) {
+    logUpload("error", "preflightAuth.networkFailed", { error: e, onLine: typeof navigator !== "undefined" ? navigator.onLine : null });
+    throw new Error("Network error reaching api.github.com — check your connection and try again.");
+  }
+  if (refRes.status === 401) {
+    const body = await refRes.text();
+    logUpload("error", "preflightAuth.401", { body: body.slice(0, 300) });
+    throw new Error(
+      `GitHub 401 — your Personal Access Token is invalid, expired, or doesn't grant access to ${ghOwner}/${ghRepo}. Go to Setup and paste a fresh fine-grained PAT with Repository access = ${ghOwner}/${ghRepo} and Repository permissions: Contents = Read and write, Metadata = Read, Actions = Read and write.`
+    );
+  }
+  if (refRes.status === 404) {
+    logUpload("error", "preflightAuth.404", {});
+    throw new Error(
+      `GitHub 404 — the token can authenticate but can't see ${ghOwner}/${ghRepo}. In Setup, check the repo owner/name are correct, and in your PAT settings make sure Repository access includes ${ghOwner}/${ghRepo}.`
+    );
+  }
+  if (!refRes.ok) {
+    const body = await refRes.text();
+    logUpload("error", "preflightAuth.refHttpError", { status: refRes.status, body: body.slice(0, 300) });
+    throw new Error(`GitHub ${refRes.status} while checking repo access: ${body.slice(0, 200)}`);
+  }
+
+  // 2) Write check: create a tree with one entry that won't actually be linked
+  //    to a commit. POST /git/trees costs almost no bytes and tells us whether
+  //    Contents: write is granted. Use the existing root tree as base so the
+  //    request is valid — we never reference the returned tree sha.
+  const { object: { sha: headSha } } = await refRes.json() as { object: { sha: string } };
+  const commitRes = await fetch(`${base}/git/commits/${headSha}`, { headers: authHeaders() });
+  if (!commitRes.ok) {
+    const body = await commitRes.text();
+    logUpload("error", "preflightAuth.commitReadHttpError", { status: commitRes.status, body: body.slice(0, 300) });
+    throw new Error(`GitHub ${commitRes.status} while reading HEAD commit: ${body.slice(0, 200)}`);
+  }
+  const { tree: { sha: treeSha } } = await commitRes.json() as { tree: { sha: string } };
+
+  const writeRes = await fetch(`${base}/git/trees`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    // base_tree only, empty tree array — GitHub returns 422 "tree must contain
+    // at least one entry" if the token CAN write but the payload is empty.
+    // That 422 is exactly what we want: it proves write access without
+    // actually mutating anything.
+    body: JSON.stringify({ base_tree: treeSha, tree: [] }),
+  });
+  if (writeRes.status === 401 || writeRes.status === 403) {
+    const body = await writeRes.text();
+    logUpload("error", "preflightAuth.writeDenied", { status: writeRes.status, body: body.slice(0, 300) });
+    throw new Error(
+      `GitHub ${writeRes.status} — your PAT can read ${ghOwner}/${ghRepo} but not write. In your token settings (https://github.com/settings/tokens?type=beta), edit the token and set Repository permissions → Contents → Read and write, then save. The token value stays the same.`
+    );
+  }
+  // 422 means: token CAN write, payload was just empty. Treat as success.
+  if (writeRes.ok || writeRes.status === 422) {
+    logUpload("info", "preflightAuth.ok", { writeStatus: writeRes.status });
+    return;
+  }
+  const body = await writeRes.text();
+  logUpload("error", "preflightAuth.writeHttpError", { status: writeRes.status, body: body.slice(0, 300) });
+  throw new Error(`GitHub ${writeRes.status} during write check: ${body.slice(0, 200)}`);
+}
+
 export async function triggerScan(): Promise<void> {
   const { ghOwner, ghRepo } = getConfig();
   const res = await fetch(
@@ -331,6 +414,12 @@ export async function commitComicsToRepo(
     totalBytes: files.reduce((s, f) => s + f.size, 0),
     chunkSize: CHUNK_SIZE,
   });
+
+  // ✨ Fast-fail auth check BEFORE we spend minutes uploading a megabyte chunk
+  // on a slow connection only to discover the token is wrong. ~1 KB / ~1 s.
+  prog.status?.('Checking GitHub authentication…');
+  await preflightAuth();
+
   prog.status?.(`Preparing ${files.length} file${files.length === 1 ? '' : 's'}…`);
 
   // Build the full list of (path, data) entries, expanding large files into chunks
