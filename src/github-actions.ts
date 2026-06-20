@@ -17,11 +17,26 @@ function authHeaders(): HeadersInit {
   const { ghToken } = getConfig();
   if (!ghToken) throw new Error("GitHub token not configured");
   return {
-    Authorization: `Bearer ${ghToken}`,
+    // GitHub accepts both "Bearer <pat>" and "token <pat>". We use 'token'
+    // because some intermediaries (corporate proxies, mobile carrier MITM
+    // boxes, even Workbox service workers in certain edge cases) treat
+    // 'Bearer' specially and rewrite the header, which silently corrupts the
+    // credential and produces a spurious 401 "Bad credentials" from GitHub.
+    Authorization: `token ${ghToken}`,
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
   };
 }
+
+/** Standard fetch options for every GitHub REST call — prevents cookie /
+ *  service-worker interference that we've seen mangling Authorization on
+ *  large POST bodies. */
+const GH_FETCH_INIT: Pick<RequestInit, "credentials" | "cache" | "mode" | "redirect"> = {
+  credentials: "omit",
+  cache: "no-store",
+  mode: "cors",
+  redirect: "follow",
+};
 
 /**
  * Fast pre-flight check that the configured token can both (a) authenticate
@@ -43,7 +58,7 @@ export async function preflightAuth(): Promise<void> {
   //    200 if at least Metadata read is granted.
   let refRes: Response;
   try {
-    refRes = await fetch(`${base}/git/ref/heads/main`, { headers: authHeaders() });
+    refRes = await fetch(`${base}/git/ref/heads/main`, { ...GH_FETCH_INIT, headers: authHeaders() });
   } catch (e) {
     logUpload("error", "preflightAuth.networkFailed", { error: e, onLine: typeof navigator !== "undefined" ? navigator.onLine : null });
     throw new Error("Network error reaching api.github.com — check your connection and try again.");
@@ -72,7 +87,7 @@ export async function preflightAuth(): Promise<void> {
   //    Contents: write is granted. Use the existing root tree as base so the
   //    request is valid — we never reference the returned tree sha.
   const { object: { sha: headSha } } = await refRes.json() as { object: { sha: string } };
-  const commitRes = await fetch(`${base}/git/commits/${headSha}`, { headers: authHeaders() });
+  const commitRes = await fetch(`${base}/git/commits/${headSha}`, { ...GH_FETCH_INIT, headers: authHeaders() });
   if (!commitRes.ok) {
     const body = await commitRes.text();
     logUpload("error", "preflightAuth.commitReadHttpError", { status: commitRes.status, body: body.slice(0, 300) });
@@ -81,6 +96,7 @@ export async function preflightAuth(): Promise<void> {
   const { tree: { sha: treeSha } } = await commitRes.json() as { tree: { sha: string } };
 
   const writeRes = await fetch(`${base}/git/trees`, {
+    ...GH_FETCH_INIT,
     method: "POST",
     headers: { ...authHeaders(), "Content-Type": "application/json" },
     // base_tree only, empty tree array — GitHub returns 422 "tree must contain
@@ -111,6 +127,7 @@ export async function triggerScan(): Promise<void> {
   const res = await fetch(
     `${GH_API}/repos/${ghOwner}/${ghRepo}/actions/workflows/scan.yml/dispatches`,
     {
+      ...GH_FETCH_INIT,
       method: "POST",
       headers: { ...authHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify({ ref: "main" }),
@@ -137,7 +154,7 @@ export async function latestScanRun(): Promise<WorkflowRun | null> {
   const { ghOwner, ghRepo } = getConfig();
   const res = await fetch(
     `${GH_API}/repos/${ghOwner}/${ghRepo}/actions/workflows/scan.yml/runs?per_page=1`,
-    { headers: authHeaders() }
+    { ...GH_FETCH_INIT, headers: authHeaders() }
   );
   if (!res.ok) throw new Error(`List runs failed: ${res.status}`);
   const data = (await res.json()) as { workflow_runs: WorkflowRun[] };
@@ -232,6 +249,7 @@ async function uploadBlob(data: Blob, label: string, chunkIdx: number, chunkTota
 
     try {
       res = await fetch(url, {
+        ...GH_FETCH_INIT,
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body,
@@ -265,9 +283,17 @@ async function uploadBlob(data: Blob, label: string, chunkIdx: number, chunkTota
   const rlRemaining = res.headers.get('x-ratelimit-remaining');
   const rlReset = res.headers.get('x-ratelimit-reset');
   const reqId = res.headers.get('x-github-request-id');
+  // Dump EVERY response header on non-OK responses — if anything is rewriting
+  // our requests in flight (proxy, service worker, mobile carrier MITM box),
+  // it usually leaves a fingerprint in via / x-served-by / cf-ray / server.
+  const allHeaders: Record<string, string> = {};
+  if (!res.ok) {
+    res.headers.forEach((value, key) => { allHeaders[key] = value; });
+  }
   logUpload(res.ok ? 'debug' : 'warn', 'uploadBlob.response', {
     label, status: res.status, ok: res.ok, ms: Date.now() - t0,
     rateLimitRemaining: rlRemaining, rateLimitReset: rlReset, requestId: reqId,
+    ...(res.ok ? {} : { allHeaders }),
   });
 
   if (!res.ok) {
@@ -293,7 +319,7 @@ async function loggedFetch(step: string, url: string, init?: RequestInit): Promi
   const t0 = Date.now();
   logUpload('debug', `${step}.fetch.start`, { url, method: init?.method ?? 'GET' });
   try {
-    const res = await fetch(url, init);
+    const res = await fetch(url, { ...GH_FETCH_INIT, ...init });
     logUpload(res.ok ? 'debug' : 'warn', `${step}.fetch.response`, {
       url, status: res.status, ok: res.ok, ms: Date.now() - t0,
       requestId: res.headers.get('x-github-request-id'),
