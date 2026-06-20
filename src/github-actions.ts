@@ -179,8 +179,12 @@ export async function latestScanRun(): Promise<WorkflowRun | null> {
  * One PATCH = one chance for a race condition, vs. one per chunk with the old approach.
  */
 
-const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB raw → ~6.7 MB base64. Smaller chunks finish in seconds on slow links, reducing the window for in-flight proxy interference.
-const BLOB_RETRY_LIMIT = 3;        // total attempts per chunk on transient failures (network / 5xx)
+// 1 MB raw → ~1.4 MB base64. At 0.35 Mbps (camp WiFi) each chunk uploads in
+// ~30 seconds, comfortably under GitHub's request-body timeout and anti-abuse
+// thresholds that drop slow-trickle uploads. At 50 Mbps each chunk is <1s, so
+// the small chunk size adds minimal overhead on fast links either.
+const CHUNK_SIZE = 1 * 1024 * 1024;
+const BLOB_RETRY_LIMIT = 5;        // total attempts per chunk on transient failures (network / 5xx)
 
 /** Progress reporting for the upload pipeline. */
 export interface UploadProgress {
