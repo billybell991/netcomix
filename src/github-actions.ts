@@ -176,55 +176,6 @@ export interface UploadProgress {
 function fmtMB(bytes: number): string {
   return (bytes / 1024 / 1024).toFixed(1) + " MB";
 }
-function fmtRate(bytes: number, ms: number): string {
-  if (ms <= 0) return "";
-  const kbps = (bytes / 1024) / (ms / 1000);
-  if (kbps > 1024) return `${(kbps / 1024).toFixed(2)} MB/s`;
-  return `${kbps.toFixed(0)} KB/s`;
-}
-
-/**
- * POST a JSON body via XMLHttpRequest so we can observe upload-byte progress.
- * `fetch()` does not surface upload progress, which makes large chunks on slow
- * connections look like the UI is stuck at 0%.
- */
-function xhrPostJson(
-  url: string,
-  headers: Record<string, string>,
-  body: string,
-  onUploadProgress?: (loaded: number, total: number) => void,
-): Promise<{ status: number; ok: boolean; text: () => Promise<string>; json: () => Promise<unknown>; headers: { get: (k: string) => string | null } }> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', url);
-    for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
-    if (onUploadProgress) {
-      xhr.upload.onprogress = (ev) => {
-        if (ev.lengthComputable) onUploadProgress(ev.loaded, ev.total);
-      };
-    }
-    xhr.onload = () => {
-      const text = xhr.responseText;
-      resolve({
-        status: xhr.status,
-        ok: xhr.status >= 200 && xhr.status < 300,
-        text: async () => text,
-        json: async () => JSON.parse(text),
-        headers: {
-          get: (k: string) => xhr.getResponseHeader(k),
-        },
-      });
-    };
-    xhr.onerror = () => {
-      const err = new TypeError('Failed to fetch');
-      (err as unknown as { cause: unknown }).cause = { xhrStatus: xhr.status, xhrStatusText: xhr.statusText };
-      reject(err);
-    };
-    xhr.ontimeout = () => reject(new Error('Upload timed out'));
-    xhr.onabort = () => reject(new Error('Upload aborted'));
-    xhr.send(body);
-  });
-}
 
 /** Upload raw bytes to the Git Blobs API and return the blob sha. */
 async function uploadBlob(data: Blob, label: string, chunkIdx: number, chunkTotal: number, progress?: UploadProgress): Promise<string> {
@@ -253,11 +204,13 @@ async function uploadBlob(data: Blob, label: string, chunkIdx: number, chunkTota
 
   const body = JSON.stringify({ content: base64, encoding: 'base64' });
 
-  // 2) POST via XHR so we get per-byte upload progress on slow links.
-  //    Retry the HTTP POST (not the FileReader step) on transient errors:
-  //    network failures, timeouts, and 5xx. 401/403/404/422 are NOT retried
-  //    — retrying those just wastes a perfectly slow upload.
-  let res: { status: number; ok: boolean; text: () => Promise<string>; json: () => Promise<unknown>; headers: { get: (k: string) => string | null } } | null = null;
+  // 2) POST via fetch(). Preflight uses fetch and works; XMLHttpRequest in
+  //    Electron / some networks corrupts the Authorization header on long
+  //    multi-MB uploads, producing a spurious 401 'Bad credentials' from
+  //    GitHub with a valid request-id (proving the request reached the API).
+  //    We trade per-byte upload progress for reliability; the shimmer overlay
+  //    + chunk-level status text + small (5 MB) chunks keep the UI alive.
+  let res: Response | null = null;
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= BLOB_RETRY_LIMIT; attempt++) {
     const tUp = Date.now();
@@ -267,19 +220,24 @@ async function uploadBlob(data: Blob, label: string, chunkIdx: number, chunkTota
       logUpload('warn', 'uploadBlob.retry', { label, attempt, lastError });
       await new Promise(r => setTimeout(r, backoffMs));
     }
-    try {
-      res = await xhrPostJson(
-        url,
-        { ...authHeaders() as Record<string, string>, 'Content-Type': 'application/json' },
-        body,
-        (loaded, total) => {
-          const elapsed = Date.now() - tUp;
-          progress?.status?.(
-            `Uploading chunk ${chunkIdx} of ${chunkTotal} — ${fmtMB(loaded)} / ${fmtMB(total)} (${fmtRate(loaded, elapsed)})${attempt > 1 ? ` [retry ${attempt}]` : ''}`
-          );
-        },
+
+    // Drive a periodic "still working" status update while the fetch is in
+    // flight, since fetch() doesn't expose upload-byte progress.
+    const tickHandle = window.setInterval(() => {
+      const elapsedSec = Math.round((Date.now() - tUp) / 1000);
+      progress?.status?.(
+        `Uploading chunk ${chunkIdx} of ${chunkTotal} (${fmtMB(data.size)}) — ${elapsedSec}s elapsed${attempt > 1 ? ` [retry ${attempt}]` : ''}`
       );
+    }, 1000);
+
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body,
+      });
     } catch (e) {
+      window.clearInterval(tickHandle);
       lastError = e;
       logUpload('error', 'uploadBlob.fetchThrew', {
         label, url, attempt, bytes: data.size, base64Len: base64.length, ms: Date.now() - t0,
@@ -289,6 +247,8 @@ async function uploadBlob(data: Blob, label: string, chunkIdx: number, chunkTota
       if (attempt < BLOB_RETRY_LIMIT) continue;
       throw e;
     }
+    window.clearInterval(tickHandle);
+
     // 5xx → retry. 4xx → don't bother (auth/permission issues are persistent).
     if (res.status >= 500 && attempt < BLOB_RETRY_LIMIT) {
       const b = await res.text();
