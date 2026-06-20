@@ -162,7 +162,8 @@ export async function latestScanRun(): Promise<WorkflowRun | null> {
  * One PATCH = one chance for a race condition, vs. one per chunk with the old approach.
  */
 
-const CHUNK_SIZE = 15 * 1024 * 1024; // 15 MB raw → ~20 MB base64, well within the ~100 MB API limit
+const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB raw → ~6.7 MB base64. Smaller chunks finish in seconds on slow links, reducing the window for in-flight proxy interference.
+const BLOB_RETRY_LIMIT = 3;        // total attempts per chunk on transient failures (network / 5xx)
 
 /** Progress reporting for the upload pipeline. */
 export interface UploadProgress {
@@ -251,30 +252,53 @@ async function uploadBlob(data: Blob, label: string, chunkIdx: number, chunkTota
   logUpload('debug', 'uploadBlob.base64Ready', { label, base64Len: base64.length, ms: Date.now() - t0 });
 
   const body = JSON.stringify({ content: base64, encoding: 'base64' });
-  const tUp = Date.now();
 
   // 2) POST via XHR so we get per-byte upload progress on slow links.
-  let res: { status: number; ok: boolean; text: () => Promise<string>; json: () => Promise<unknown>; headers: { get: (k: string) => string | null } };
-  try {
-    res = await xhrPostJson(
-      url,
-      { ...authHeaders() as Record<string, string>, 'Content-Type': 'application/json' },
-      body,
-      (loaded, total) => {
-        const elapsed = Date.now() - tUp;
-        progress?.status?.(
-          `Uploading chunk ${chunkIdx} of ${chunkTotal} — ${fmtMB(loaded)} / ${fmtMB(total)} (${fmtRate(loaded, elapsed)})`
-        );
-      },
-    );
-  } catch (e) {
-    logUpload('error', 'uploadBlob.fetchThrew', {
-      label, url, bytes: data.size, base64Len: base64.length, ms: Date.now() - t0,
-      onLine: typeof navigator !== 'undefined' ? navigator.onLine : null,
-      error: e,
-    });
-    throw e;
+  //    Retry the HTTP POST (not the FileReader step) on transient errors:
+  //    network failures, timeouts, and 5xx. 401/403/404/422 are NOT retried
+  //    — retrying those just wastes a perfectly slow upload.
+  let res: { status: number; ok: boolean; text: () => Promise<string>; json: () => Promise<unknown>; headers: { get: (k: string) => string | null } } | null = null;
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= BLOB_RETRY_LIMIT; attempt++) {
+    const tUp = Date.now();
+    if (attempt > 1) {
+      const backoffMs = 1500 * attempt;
+      progress?.status?.(`Retrying chunk ${chunkIdx} of ${chunkTotal} — attempt ${attempt}/${BLOB_RETRY_LIMIT} after ${backoffMs}ms…`);
+      logUpload('warn', 'uploadBlob.retry', { label, attempt, lastError });
+      await new Promise(r => setTimeout(r, backoffMs));
+    }
+    try {
+      res = await xhrPostJson(
+        url,
+        { ...authHeaders() as Record<string, string>, 'Content-Type': 'application/json' },
+        body,
+        (loaded, total) => {
+          const elapsed = Date.now() - tUp;
+          progress?.status?.(
+            `Uploading chunk ${chunkIdx} of ${chunkTotal} — ${fmtMB(loaded)} / ${fmtMB(total)} (${fmtRate(loaded, elapsed)})${attempt > 1 ? ` [retry ${attempt}]` : ''}`
+          );
+        },
+      );
+    } catch (e) {
+      lastError = e;
+      logUpload('error', 'uploadBlob.fetchThrew', {
+        label, url, attempt, bytes: data.size, base64Len: base64.length, ms: Date.now() - t0,
+        onLine: typeof navigator !== 'undefined' ? navigator.onLine : null,
+        error: e,
+      });
+      if (attempt < BLOB_RETRY_LIMIT) continue;
+      throw e;
+    }
+    // 5xx → retry. 4xx → don't bother (auth/permission issues are persistent).
+    if (res.status >= 500 && attempt < BLOB_RETRY_LIMIT) {
+      const b = await res.text();
+      lastError = `${res.status}: ${b.slice(0, 200)}`;
+      logUpload('warn', 'uploadBlob.5xxRetry', { label, status: res.status, attempt, body: b.slice(0, 200) });
+      continue;
+    }
+    break;
   }
+  if (!res) throw lastError instanceof Error ? lastError : new Error(String(lastError));
 
   // 3) Log response metadata before reading the body — even on 5xx the
   //    rate-limit / request-id headers are diagnostic.
