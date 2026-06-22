@@ -37,10 +37,20 @@ UNAR = shutil.which("unar")
 PUBLIC_COMICS = Path(__file__).resolve().parent.parent / "public" / "comics"
 
 
-def detect_panels(image_path: Path) -> tuple[int, int, list[Panel], str]:
+def detect_panels(image_path: Path) -> tuple[int, int, list[Panel], str, str]:
     """
     Detect panels using Gemini Vision first, falling back to OpenCV.
-    Returns (width, height, panels, dominantColor).
+    Returns (width, height, panels, dominantColor, source).
+
+    `source` is one of:
+      - "gemini"  → Gemini Vision was queried and returned a result (possibly []).
+      - "opencv"  → Gemini was unavailable / failed; the OpenCV projection-cut
+                    result is being used.
+
+    A `[]` result from "gemini" means Gemini explicitly classified the page as
+    a splash / non-comic page; downstream code MUST trust it and not retry with
+    the balloon fallback.  A `[]` from "opencv" means projection-cut couldn't
+    find any panels — that case still warrants the balloon fallback.
     """
     # Get dimensions + dominant color from OpenCV regardless (cheap)
     w, h, opencv_panels, dom = _opencv_detect(image_path)
@@ -55,7 +65,7 @@ def detect_panels(image_path: Path) -> tuple[int, int, list[Panel], str]:
         panels = opencv_panels
 
     print(f"    [{source}] {len(panels)} panels", end="")
-    return w, h, panels, dom or "#222"
+    return w, h, panels, dom or "#222", source
 
 
 def extract_pages_local(archive: Path, out_dir: Path) -> list[Path]:
@@ -99,12 +109,15 @@ def extract_pages_local(archive: Path, out_dir: Path) -> list[Path]:
 def _build_page_records(pages: list[Path]) -> list[dict]:
     records = []
     for idx, p in enumerate(pages):
-        w, h, panels, dom = detect_panels(p)
+        w, h, panels, dom, source = detect_panels(p)
         # Cover (index 0) is always full-page — never panel-snap
         if idx == 0:
             panels = []
-        elif not panels:
-            # Non-cover with no panels from Gemini or OpenCV → try balloon/caption fallback
+        elif not panels and source != "gemini":
+            # OpenCV projection-cut found nothing → try balloon/caption fallback.
+            # When `source == "gemini"` an empty list is Gemini's explicit
+            # "this is a splash / non-comic page" verdict — TRUST IT and keep
+            # panels=[] so the reader shows the page as a full-page snap.
             panels = _detect_balloons(p)
         records.append({
             "file": p.name,

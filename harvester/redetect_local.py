@@ -76,8 +76,11 @@ def redetect(issue_id: str) -> int:
                 ]
                 source = "opencv"
 
-            # Balloon/caption fallback: neither Gemini nor OpenCV found panels
-            if not new_panels:
+            # Balloon/caption fallback runs ONLY when the OpenCV path produced
+            # nothing.  An empty `gemini` result is Gemini's explicit "this is
+            # a splash / non-comic page" verdict — trust it and keep panels=[]
+            # so the reader treats the page as a full-page snap.
+            if not new_panels and source != "gemini":
                 balloon_panels = _detect_balloons(img_path)
                 if balloon_panels:
                     new_panels = [

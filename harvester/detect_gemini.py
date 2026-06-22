@@ -32,20 +32,76 @@ A comic panel is a framed region of sequential art. Include any speech balloons 
 Return ONLY valid JSON — no markdown fences, no explanation:
 {{"panels": [{{"x": 10, "y": 20, "w": 400, "h": 300}}, ...]}}
 
-Rules:
-1. If this is a splash page, cover art, pin-up, or full-page illustration with no panel divisions → return {{"panels": []}}
-2. Return {{"panels": []}} for text pages, credits, table of contents, or advertisement pages
-3. Do NOT include page numbers, publisher logos, or outer white margins
-4. All values are integers in pixels. Image is {width}x{height} pixels.
-5. Expand each panel box to include its speech balloons and caption boxes
-6. Minimum viable panel: 80×80 px
-7. Order strictly: top-left first, then right across each row, then next row down"""
+CRITICAL: Return {{"panels": []}} (empty list) for ANY of the following:
+  - Splash page / pin-up / full-page single illustration (no panel divisions)
+  - Credits / copyright / colophon / "indicia" pages
+  - Table of contents / title pages / chapter dividers
+  - Advertisement / promo / "next issue" / cross-promo pages
+  - Publisher / studio / scanner logos that fill the page
+  - Back cover / inside-back-cover pages
+  - Any page where the "panels" you would return are merely text blocks,
+    cover thumbnails, logos, or other non-sequential-art rectangles.
+  - Bleed-art pages where the artist deliberately removed panel borders to
+    show one large continuous scene (even if there are speech bubbles
+    scattered across it). When in doubt, prefer one full-page snap.
+
+Only return non-empty panel rectangles when the page has clear, separate
+framed regions of sequential storytelling art (typical 2–9 panels per page).
+A page where a "panel" would be a column of text, a credit list, or a tiny
+fragment of art is NOT a panel — return [].
+
+For mixed-layout pages (e.g. a top-half bleed/spread + a bottom-half grid of
+small bordered panels), include BOTH: the big bleed region as one panel AND
+each small bordered panel as its own panel.
+
+Other rules:
+1. Do NOT include page numbers, publisher logos, or outer white margins
+2. All values are integers in pixels. Image is {width}x{height} pixels.
+3. Expand each panel box to include its speech balloons and caption boxes
+4. Minimum viable panel: 80×80 px
+5. Order strictly: top-left first, then right across each row, then next row down"""
+
+
+# Post-processing thresholds (applied to whatever Gemini returns)
+#
+# `_SPLASH_COVERAGE_THRESHOLD`: if the sum of panel areas is less than this
+# fraction of the page area, treat the page as a splash and return [].
+# Rationale: a real multi-panel page covers ≥35% of its area with panels;
+# pages where Gemini returned only a couple of small text-block boxes (credits,
+# logos, ads) typically cover <25%.  We pick 0.25 as a conservative line.
+_SPLASH_COVERAGE_THRESHOLD = 0.25
+
+# `_SMALL_PANEL_AREA_FRAC`: panels smaller than this fraction of the page are
+# discarded as text-block / logo fragments before the splash-coverage check.
+# 0.015 ≈ a 140×140 box on a 1170×1800 page — too small to be a real panel.
+_SMALL_PANEL_AREA_FRAC = 0.015
+
+
+def _postprocess(panels: list["Panel"], width: int, height: int) -> list["Panel"]:
+    """Drop obvious junk and collapse to splash when coverage is too low.
+
+    See module-level constants for the rationale behind each threshold.
+    """
+    if not panels:
+        return panels
+    page_area = max(1, width * height)
+    cleaned = [p for p in panels if (p.w * p.h) / page_area >= _SMALL_PANEL_AREA_FRAC]
+    if not cleaned:
+        return []
+    coverage = sum(p.w * p.h for p in cleaned) / page_area
+    if coverage < _SPLASH_COVERAGE_THRESHOLD:
+        # The remaining "panels" cover so little of the page that they're
+        # almost certainly text fragments / logos on a splash page.  Treat as
+        # full-page splash so the reader shows the page in one snap.
+        return []
+    return cleaned
 
 
 def detect_panels_gemini(image_path: Path, width: int, height: int) -> Optional[list[Panel]]:
     """
     Call Gemini Vision to detect comic panels.
     Returns list of Panel objects in reading order, or None if unavailable/failed.
+    An empty list is a positive splash-page verdict (page has no panels).
     """
     if not HAS_GEMINI:
         return None
@@ -96,7 +152,7 @@ def detect_panels_gemini(image_path: Path, width: int, height: int) -> Optional[
                 continue
             panels.append(Panel(x, y, w, h, x + w // 2, y + h // 2))
 
-        return panels
+        return _postprocess(panels, width, height)
 
     except Exception as exc:
         print(f"  [Gemini] {image_path.name}: {exc}", file=sys.stderr)
