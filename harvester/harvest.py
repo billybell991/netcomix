@@ -1373,10 +1373,36 @@ def detect_panels(image_path: Path, gutter_threshold: int = 230) -> Tuple[int, i
 
     # ── Post-process: discard a lone dark-bg fallback panel that is too small
     # to be the only panel on the page.  When the dark-bg blob flood-fill
-    # produces exactly 1 panel covering < 15% of the page, showing the full
-    # page is better than zooming into that 1 tiny panel.
-    if len(panels) == 1 and (panels[0].w * panels[0].h) / page_area < 0.15:
+    # produces exactly 1 panel covering < 25% of the page, showing the full
+    # page is better than zooming into that 1 tiny panel.  (Bumped from 0.15
+    # to 0.25 to catch full-page splashes like the EC Comics logo on Catacomb
+    # of Torment #12 page 4, where a partial panel ~18 % of page slipped past
+    # the old threshold.)
+    if len(panels) == 1 and (panels[0].w * panels[0].h) / page_area < 0.25:
         panels = []
+
+    # ── Text-column / credits-page guard ─────────────────────────────────
+    # Dark-bg flood-fill on credits / colophon pages (black background, white
+    # text in 1–3 tall columns) returns the text columns as "panels".  These
+    # are NOT comic panels — they're typeset text blocks the reader should
+    # show as one full-page snap.  Heuristic: if ALL detected panels are tall
+    # narrow strips (aspect h/w ≥ 2.0) AND each one covers ≥ 80 % of the page
+    # height AND there are ≤ 3 of them, treat as credits/text page.
+    if 1 <= len(panels) <= 3 and all(
+        p.h / max(p.w, 1) >= 2.0 and p.h >= h * 0.80 for p in panels
+    ):
+        panels = []
+
+    # ── Splash-coverage guard ────────────────────────────────────────────
+    # If the surviving panels collectively cover less than 25 % of the page
+    # area, they're almost certainly text fragments / logo bits on a splash
+    # page rather than real comic panels.  Treat as full-page splash.  This
+    # universal floor backstops every detection path: projection-cut, dark-bg
+    # flood-fill, and 225-threshold fallback.
+    if panels:
+        _cov = sum(p.w * p.h for p in panels) / page_area
+        if _cov < 0.25:
+            panels = []
 
     # Dominant color (mean of a downsampled copy — cheap and good enough for
     # the reader's letterbox background tint).
@@ -1523,6 +1549,16 @@ def detect_balloons_and_captions(image_path: Path) -> List[Panel]:
             ))
 
     if not candidates or len(candidates) > 12:
+        return []
+
+    # ── Splash-coverage guard ────────────────────────────────────────────
+    # If the surviving balloons collectively cover less than 25 % of the
+    # page, they're almost certainly small logo / text fragments inside a
+    # single full-page graphic (e.g. the DCP "Digital Comics Preservation"
+    # back-cover logo on Catacomb of Torment #12 page 37, or any other
+    # logo-only / ad page).  Treat as full-page splash so the reader shows
+    # the whole page in one snap instead of zooming into 2–3 random sub-regions.
+    if sum(p.w * p.h for p in candidates) / page_area < 0.25:
         return []
 
     # Reading order: bucket rows, then left-to-right within each row
