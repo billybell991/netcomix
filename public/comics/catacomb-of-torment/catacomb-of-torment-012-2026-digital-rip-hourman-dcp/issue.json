@@ -1,0 +1,1413 @@
+{
+  "id": "catacomb-of-torment-012-2026-digital-rip-hourman-dcp",
+  "title": "Catacomb of Torment #012",
+  "series": "catacomb-of-torment",
+  "cover": "page-001.jpg",
+  "pages": [
+    {
+      "file": "page-001.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [],
+      "dominantColor": "#916447"
+    },
+    {
+      "file": "page-002.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 417,
+          "h": 1799,
+          "centerX": 208,
+          "centerY": 899
+        },
+        {
+          "x": 555,
+          "y": 0,
+          "w": 616,
+          "h": 1799,
+          "centerX": 863,
+          "centerY": 899
+        }
+      ],
+      "dominantColor": "#090909"
+    },
+    {
+      "file": "page-003.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1171,
+          "h": 1386,
+          "centerX": 585,
+          "centerY": 693
+        },
+        {
+          "x": 0,
+          "y": 1386,
+          "w": 1171,
+          "h": 413,
+          "centerX": 585,
+          "centerY": 1592
+        }
+      ],
+      "dominantColor": "#5f264a"
+    },
+    {
+      "file": "page-004.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 69,
+          "y": 236,
+          "w": 1038,
+          "h": 371,
+          "centerX": 588,
+          "centerY": 421
+        }
+      ],
+      "dominantColor": "#b499be"
+    },
+    {
+      "file": "page-005.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 89,
+          "w": 1171,
+          "h": 311,
+          "centerX": 585,
+          "centerY": 244
+        },
+        {
+          "x": 0,
+          "y": 408,
+          "w": 1171,
+          "h": 774,
+          "centerX": 585,
+          "centerY": 795
+        },
+        {
+          "x": 27,
+          "y": 1204,
+          "w": 1099,
+          "h": 496,
+          "centerX": 576,
+          "centerY": 1452
+        }
+      ],
+      "dominantColor": "#80787d"
+    },
+    {
+      "file": "page-006.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 60,
+          "y": 81,
+          "w": 521,
+          "h": 604,
+          "centerX": 320,
+          "centerY": 383
+        },
+        {
+          "x": 589,
+          "y": 83,
+          "w": 516,
+          "h": 602,
+          "centerX": 847,
+          "centerY": 384
+        },
+        {
+          "x": 60,
+          "y": 692,
+          "w": 521,
+          "h": 588,
+          "centerX": 320,
+          "centerY": 986
+        },
+        {
+          "x": 589,
+          "y": 692,
+          "w": 516,
+          "h": 605,
+          "centerX": 847,
+          "centerY": 994
+        },
+        {
+          "x": 0,
+          "y": 1304,
+          "w": 1171,
+          "h": 394,
+          "centerX": 585,
+          "centerY": 1501
+        }
+      ],
+      "dominantColor": "#a19694"
+    },
+    {
+      "file": "page-007.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 544,
+          "h": 711,
+          "centerX": 272,
+          "centerY": 355
+        },
+        {
+          "x": 544,
+          "y": 0,
+          "w": 344,
+          "h": 1799,
+          "centerX": 716,
+          "centerY": 899
+        },
+        {
+          "x": 944,
+          "y": 0,
+          "w": 227,
+          "h": 1799,
+          "centerX": 1057,
+          "centerY": 899
+        },
+        {
+          "x": 0,
+          "y": 711,
+          "w": 544,
+          "h": 671,
+          "centerX": 272,
+          "centerY": 1046
+        },
+        {
+          "x": 0,
+          "y": 1382,
+          "w": 544,
+          "h": 417,
+          "centerX": 272,
+          "centerY": 1590
+        }
+      ],
+      "dominantColor": "#7e7067"
+    },
+    {
+      "file": "page-008.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 70,
+          "y": 82,
+          "w": 1037,
+          "h": 243,
+          "centerX": 588,
+          "centerY": 203
+        },
+        {
+          "x": 70,
+          "y": 338,
+          "w": 1037,
+          "h": 239,
+          "centerX": 588,
+          "centerY": 457
+        },
+        {
+          "x": 70,
+          "y": 588,
+          "w": 1037,
+          "h": 647,
+          "centerX": 588,
+          "centerY": 911
+        },
+        {
+          "x": 70,
+          "y": 1247,
+          "w": 337,
+          "h": 268,
+          "centerX": 238,
+          "centerY": 1381
+        },
+        {
+          "x": 407,
+          "y": 1247,
+          "w": 722,
+          "h": 268,
+          "centerX": 768,
+          "centerY": 1381
+        },
+        {
+          "x": 357,
+          "y": 1522,
+          "w": 754,
+          "h": 235,
+          "centerX": 734,
+          "centerY": 1639
+        }
+      ],
+      "dominantColor": "#958280"
+    },
+    {
+      "file": "page-009.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 52,
+          "y": 70,
+          "w": 1052,
+          "h": 1251,
+          "centerX": 578,
+          "centerY": 695
+        },
+        {
+          "x": 64,
+          "y": 1342,
+          "w": 1049,
+          "h": 420,
+          "centerX": 588,
+          "centerY": 1552
+        }
+      ],
+      "dominantColor": "#9f95a9"
+    },
+    {
+      "file": "page-010.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 874,
+          "h": 343,
+          "centerX": 437,
+          "centerY": 171
+        },
+        {
+          "x": 874,
+          "y": 0,
+          "w": 297,
+          "h": 343,
+          "centerX": 1022,
+          "centerY": 171
+        },
+        {
+          "x": 0,
+          "y": 462,
+          "w": 1171,
+          "h": 225,
+          "centerX": 585,
+          "centerY": 574
+        },
+        {
+          "x": 0,
+          "y": 780,
+          "w": 1171,
+          "h": 778,
+          "centerX": 585,
+          "centerY": 1169
+        },
+        {
+          "x": 0,
+          "y": 1558,
+          "w": 1171,
+          "h": 241,
+          "centerX": 585,
+          "centerY": 1678
+        }
+      ],
+      "dominantColor": "#7a8382"
+    },
+    {
+      "file": "page-011.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 29,
+          "y": 85,
+          "w": 1106,
+          "h": 342,
+          "centerX": 582,
+          "centerY": 256
+        },
+        {
+          "x": 64,
+          "y": 440,
+          "w": 1107,
+          "h": 1273,
+          "centerX": 617,
+          "centerY": 1076
+        }
+      ],
+      "dominantColor": "#948a86"
+    },
+    {
+      "file": "page-012.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 36,
+          "y": 43,
+          "w": 1073,
+          "h": 1222,
+          "centerX": 572,
+          "centerY": 654
+        },
+        {
+          "x": 63,
+          "y": 1275,
+          "w": 1108,
+          "h": 289,
+          "centerX": 617,
+          "centerY": 1419
+        },
+        {
+          "x": 63,
+          "y": 1564,
+          "w": 1108,
+          "h": 203,
+          "centerX": 617,
+          "centerY": 1665
+        }
+      ],
+      "dominantColor": "#8e837d"
+    },
+    {
+      "file": "page-013.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 4,
+          "y": 38,
+          "w": 1102,
+          "h": 893,
+          "centerX": 555,
+          "centerY": 484
+        },
+        {
+          "x": 0,
+          "y": 950,
+          "w": 1171,
+          "h": 779,
+          "centerX": 585,
+          "centerY": 1339
+        }
+      ],
+      "dominantColor": "#656b64"
+    },
+    {
+      "file": "page-014.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 65,
+          "y": 66,
+          "w": 1041,
+          "h": 483,
+          "centerX": 585,
+          "centerY": 307
+        },
+        {
+          "x": 65,
+          "y": 565,
+          "w": 1041,
+          "h": 405,
+          "centerX": 585,
+          "centerY": 767
+        },
+        {
+          "x": 0,
+          "y": 986,
+          "w": 587,
+          "h": 747,
+          "centerX": 293,
+          "centerY": 1359
+        },
+        {
+          "x": 587,
+          "y": 986,
+          "w": 584,
+          "h": 747,
+          "centerX": 879,
+          "centerY": 1359
+        }
+      ],
+      "dominantColor": "#827663"
+    },
+    {
+      "file": "page-015.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 66,
+          "w": 1171,
+          "h": 371,
+          "centerX": 585,
+          "centerY": 251
+        },
+        {
+          "x": 65,
+          "y": 453,
+          "w": 1039,
+          "h": 426,
+          "centerX": 584,
+          "centerY": 666
+        },
+        {
+          "x": 65,
+          "y": 894,
+          "w": 1039,
+          "h": 392,
+          "centerX": 584,
+          "centerY": 1090
+        },
+        {
+          "x": 0,
+          "y": 1302,
+          "w": 1171,
+          "h": 497,
+          "centerX": 585,
+          "centerY": 1550
+        }
+      ],
+      "dominantColor": "#695c4d"
+    },
+    {
+      "file": "page-016.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 69,
+          "w": 1105,
+          "h": 366,
+          "centerX": 552,
+          "centerY": 252
+        },
+        {
+          "x": 67,
+          "y": 455,
+          "w": 488,
+          "h": 555,
+          "centerX": 311,
+          "centerY": 732
+        },
+        {
+          "x": 572,
+          "y": 455,
+          "w": 533,
+          "h": 555,
+          "centerX": 838,
+          "centerY": 732
+        },
+        {
+          "x": 0,
+          "y": 1030,
+          "w": 1171,
+          "h": 705,
+          "centerX": 585,
+          "centerY": 1382
+        }
+      ],
+      "dominantColor": "#6f6757"
+    },
+    {
+      "file": "page-017.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 84,
+          "w": 1171,
+          "h": 388,
+          "centerX": 585,
+          "centerY": 278
+        },
+        {
+          "x": 0,
+          "y": 487,
+          "w": 1171,
+          "h": 825,
+          "centerX": 585,
+          "centerY": 899
+        },
+        {
+          "x": 0,
+          "y": 1327,
+          "w": 1171,
+          "h": 389,
+          "centerX": 585,
+          "centerY": 1521
+        }
+      ],
+      "dominantColor": "#604e3c"
+    },
+    {
+      "file": "page-018.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 66,
+          "w": 750,
+          "h": 543,
+          "centerX": 375,
+          "centerY": 337
+        },
+        {
+          "x": 766,
+          "y": 66,
+          "w": 337,
+          "h": 543,
+          "centerX": 934,
+          "centerY": 337
+        },
+        {
+          "x": 66,
+          "y": 625,
+          "w": 322,
+          "h": 552,
+          "centerX": 227,
+          "centerY": 901
+        },
+        {
+          "x": 404,
+          "y": 625,
+          "w": 346,
+          "h": 552,
+          "centerX": 577,
+          "centerY": 901
+        },
+        {
+          "x": 766,
+          "y": 625,
+          "w": 337,
+          "h": 552,
+          "centerX": 934,
+          "centerY": 901
+        },
+        {
+          "x": 66,
+          "y": 1193,
+          "w": 322,
+          "h": 541,
+          "centerX": 227,
+          "centerY": 1463
+        },
+        {
+          "x": 404,
+          "y": 1193,
+          "w": 346,
+          "h": 541,
+          "centerX": 577,
+          "centerY": 1463
+        },
+        {
+          "x": 766,
+          "y": 1193,
+          "w": 337,
+          "h": 541,
+          "centerX": 934,
+          "centerY": 1463
+        }
+      ],
+      "dominantColor": "#8b7c69"
+    },
+    {
+      "file": "page-019.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 66,
+          "y": 67,
+          "w": 474,
+          "h": 478,
+          "centerX": 303,
+          "centerY": 306
+        },
+        {
+          "x": 556,
+          "y": 67,
+          "w": 548,
+          "h": 478,
+          "centerX": 830,
+          "centerY": 306
+        },
+        {
+          "x": 66,
+          "y": 558,
+          "w": 348,
+          "h": 543,
+          "centerX": 240,
+          "centerY": 829
+        },
+        {
+          "x": 428,
+          "y": 558,
+          "w": 340,
+          "h": 543,
+          "centerX": 598,
+          "centerY": 829
+        },
+        {
+          "x": 782,
+          "y": 558,
+          "w": 322,
+          "h": 543,
+          "centerX": 943,
+          "centerY": 829
+        },
+        {
+          "x": 67,
+          "y": 1115,
+          "w": 257,
+          "h": 618,
+          "centerX": 195,
+          "centerY": 1424
+        },
+        {
+          "x": 339,
+          "y": 1115,
+          "w": 832,
+          "h": 684,
+          "centerX": 755,
+          "centerY": 1457
+        }
+      ],
+      "dominantColor": "#766455"
+    },
+    {
+      "file": "page-020.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 67,
+          "y": 66,
+          "w": 500,
+          "h": 359,
+          "centerX": 317,
+          "centerY": 245
+        },
+        {
+          "x": 585,
+          "y": 66,
+          "w": 518,
+          "h": 359,
+          "centerX": 844,
+          "centerY": 245
+        },
+        {
+          "x": 67,
+          "y": 442,
+          "w": 1036,
+          "h": 482,
+          "centerX": 585,
+          "centerY": 683
+        },
+        {
+          "x": 0,
+          "y": 941,
+          "w": 1171,
+          "h": 858,
+          "centerX": 585,
+          "centerY": 1370
+        }
+      ],
+      "dominantColor": "#65564c"
+    },
+    {
+      "file": "page-021.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1171,
+          "h": 1328,
+          "centerX": 585,
+          "centerY": 664
+        },
+        {
+          "x": 36,
+          "y": 1343,
+          "w": 527,
+          "h": 417,
+          "centerX": 299,
+          "centerY": 1551
+        },
+        {
+          "x": 586,
+          "y": 1343,
+          "w": 546,
+          "h": 414,
+          "centerX": 859,
+          "centerY": 1550
+        }
+      ],
+      "dominantColor": "#837d75"
+    },
+    {
+      "file": "page-022.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 43,
+          "y": 45,
+          "w": 1089,
+          "h": 428,
+          "centerX": 587,
+          "centerY": 259
+        },
+        {
+          "x": 44,
+          "y": 492,
+          "w": 531,
+          "h": 406,
+          "centerX": 309,
+          "centerY": 695
+        },
+        {
+          "x": 595,
+          "y": 492,
+          "w": 537,
+          "h": 406,
+          "centerX": 863,
+          "centerY": 695
+        },
+        {
+          "x": 44,
+          "y": 918,
+          "w": 530,
+          "h": 401,
+          "centerX": 309,
+          "centerY": 1118
+        },
+        {
+          "x": 594,
+          "y": 918,
+          "w": 537,
+          "h": 402,
+          "centerX": 862,
+          "centerY": 1119
+        },
+        {
+          "x": 43,
+          "y": 1337,
+          "w": 530,
+          "h": 402,
+          "centerX": 308,
+          "centerY": 1538
+        },
+        {
+          "x": 593,
+          "y": 1337,
+          "w": 536,
+          "h": 402,
+          "centerX": 861,
+          "centerY": 1538
+        }
+      ],
+      "dominantColor": "#86827f"
+    },
+    {
+      "file": "page-023.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1171,
+          "h": 899,
+          "centerX": 585,
+          "centerY": 449
+        },
+        {
+          "x": 44,
+          "y": 923,
+          "w": 528,
+          "h": 412,
+          "centerX": 308,
+          "centerY": 1129
+        },
+        {
+          "x": 591,
+          "y": 923,
+          "w": 534,
+          "h": 409,
+          "centerX": 858,
+          "centerY": 1127
+        },
+        {
+          "x": 45,
+          "y": 1352,
+          "w": 528,
+          "h": 405,
+          "centerX": 309,
+          "centerY": 1554
+        },
+        {
+          "x": 593,
+          "y": 1350,
+          "w": 535,
+          "h": 404,
+          "centerX": 860,
+          "centerY": 1552
+        }
+      ],
+      "dominantColor": "#8a7869"
+    },
+    {
+      "file": "page-024.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 32,
+          "y": 69,
+          "w": 542,
+          "h": 412,
+          "centerX": 303,
+          "centerY": 275
+        },
+        {
+          "x": 594,
+          "y": 70,
+          "w": 542,
+          "h": 412,
+          "centerX": 865,
+          "centerY": 276
+        },
+        {
+          "x": 0,
+          "y": 503,
+          "w": 1171,
+          "h": 824,
+          "centerX": 585,
+          "centerY": 915
+        },
+        {
+          "x": 34,
+          "y": 1346,
+          "w": 536,
+          "h": 408,
+          "centerX": 302,
+          "centerY": 1550
+        },
+        {
+          "x": 594,
+          "y": 1346,
+          "w": 541,
+          "h": 406,
+          "centerX": 864,
+          "centerY": 1549
+        }
+      ],
+      "dominantColor": "#a68c89"
+    },
+    {
+      "file": "page-025.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 41,
+          "y": 43,
+          "w": 1089,
+          "h": 411,
+          "centerX": 585,
+          "centerY": 248
+        },
+        {
+          "x": 39,
+          "y": 473,
+          "w": 536,
+          "h": 402,
+          "centerX": 307,
+          "centerY": 674
+        },
+        {
+          "x": 593,
+          "y": 473,
+          "w": 536,
+          "h": 403,
+          "centerX": 861,
+          "centerY": 674
+        },
+        {
+          "x": 0,
+          "y": 895,
+          "w": 1171,
+          "h": 904,
+          "centerX": 585,
+          "centerY": 1347
+        }
+      ],
+      "dominantColor": "#7d746d"
+    },
+    {
+      "file": "page-026.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 39,
+          "y": 37,
+          "w": 538,
+          "h": 393,
+          "centerX": 308,
+          "centerY": 233
+        },
+        {
+          "x": 599,
+          "y": 35,
+          "w": 535,
+          "h": 395,
+          "centerX": 866,
+          "centerY": 232
+        },
+        {
+          "x": 41,
+          "y": 447,
+          "w": 536,
+          "h": 380,
+          "centerX": 309,
+          "centerY": 637
+        },
+        {
+          "x": 600,
+          "y": 447,
+          "w": 534,
+          "h": 380,
+          "centerX": 867,
+          "centerY": 637
+        },
+        {
+          "x": 0,
+          "y": 841,
+          "w": 1171,
+          "h": 518,
+          "centerX": 585,
+          "centerY": 1100
+        },
+        {
+          "x": 0,
+          "y": 1375,
+          "w": 1171,
+          "h": 424,
+          "centerX": 585,
+          "centerY": 1587
+        }
+      ],
+      "dominantColor": "#6e6763"
+    },
+    {
+      "file": "page-027.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 38,
+          "y": 53,
+          "w": 543,
+          "h": 411,
+          "centerX": 309,
+          "centerY": 258
+        },
+        {
+          "x": 602,
+          "y": 53,
+          "w": 532,
+          "h": 411,
+          "centerX": 868,
+          "centerY": 258
+        },
+        {
+          "x": 39,
+          "y": 481,
+          "w": 1095,
+          "h": 411,
+          "centerX": 586,
+          "centerY": 686
+        },
+        {
+          "x": 38,
+          "y": 913,
+          "w": 543,
+          "h": 411,
+          "centerX": 309,
+          "centerY": 1118
+        },
+        {
+          "x": 601,
+          "y": 913,
+          "w": 534,
+          "h": 411,
+          "centerX": 868,
+          "centerY": 1118
+        },
+        {
+          "x": 37,
+          "y": 1343,
+          "w": 543,
+          "h": 408,
+          "centerX": 308,
+          "centerY": 1547
+        },
+        {
+          "x": 602,
+          "y": 1342,
+          "w": 531,
+          "h": 407,
+          "centerX": 867,
+          "centerY": 1545
+        }
+      ],
+      "dominantColor": "#7e7978"
+    },
+    {
+      "file": "page-028.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 42,
+          "y": 46,
+          "w": 541,
+          "h": 411,
+          "centerX": 312,
+          "centerY": 251
+        },
+        {
+          "x": 607,
+          "y": 46,
+          "w": 529,
+          "h": 411,
+          "centerX": 871,
+          "centerY": 251
+        },
+        {
+          "x": 42,
+          "y": 476,
+          "w": 541,
+          "h": 412,
+          "centerX": 312,
+          "centerY": 682
+        },
+        {
+          "x": 607,
+          "y": 476,
+          "w": 528,
+          "h": 411,
+          "centerX": 871,
+          "centerY": 681
+        },
+        {
+          "x": 42,
+          "y": 903,
+          "w": 1092,
+          "h": 410,
+          "centerX": 588,
+          "centerY": 1108
+        },
+        {
+          "x": 41,
+          "y": 1333,
+          "w": 540,
+          "h": 404,
+          "centerX": 311,
+          "centerY": 1535
+        },
+        {
+          "x": 604,
+          "y": 1333,
+          "w": 529,
+          "h": 403,
+          "centerX": 868,
+          "centerY": 1534
+        }
+      ],
+      "dominantColor": "#867b74"
+    },
+    {
+      "file": "page-029.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1171,
+          "h": 500,
+          "centerX": 585,
+          "centerY": 250
+        },
+        {
+          "x": 0,
+          "y": 521,
+          "w": 1171,
+          "h": 858,
+          "centerX": 585,
+          "centerY": 950
+        },
+        {
+          "x": 0,
+          "y": 1395,
+          "w": 566,
+          "h": 404,
+          "centerX": 283,
+          "centerY": 1597
+        },
+        {
+          "x": 585,
+          "y": 1393,
+          "w": 586,
+          "h": 406,
+          "centerX": 878,
+          "centerY": 1596
+        }
+      ],
+      "dominantColor": "#614837"
+    },
+    {
+      "file": "page-030.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1171,
+          "h": 480,
+          "centerX": 585,
+          "centerY": 240
+        },
+        {
+          "x": 0,
+          "y": 491,
+          "w": 1171,
+          "h": 840,
+          "centerX": 585,
+          "centerY": 911
+        },
+        {
+          "x": 0,
+          "y": 1346,
+          "w": 1171,
+          "h": 453,
+          "centerX": 585,
+          "centerY": 1572
+        }
+      ],
+      "dominantColor": "#6e594b"
+    },
+    {
+      "file": "page-031.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 299,
+          "w": 580,
+          "h": 796,
+          "centerX": 290,
+          "centerY": 697
+        },
+        {
+          "x": 580,
+          "y": 299,
+          "w": 591,
+          "h": 796,
+          "centerX": 875,
+          "centerY": 697
+        },
+        {
+          "x": 208,
+          "y": 1230,
+          "w": 548,
+          "h": 426,
+          "centerX": 482,
+          "centerY": 1443
+        }
+      ],
+      "dominantColor": "#7e647a"
+    },
+    {
+      "file": "page-032.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 62,
+          "y": 218,
+          "w": 1067,
+          "h": 267,
+          "centerX": 595,
+          "centerY": 351
+        },
+        {
+          "x": 69,
+          "y": 569,
+          "w": 1032,
+          "h": 235,
+          "centerX": 585,
+          "centerY": 686
+        },
+        {
+          "x": 70,
+          "y": 949,
+          "w": 505,
+          "h": 488,
+          "centerX": 322,
+          "centerY": 1193
+        },
+        {
+          "x": 596,
+          "y": 949,
+          "w": 505,
+          "h": 488,
+          "centerX": 848,
+          "centerY": 1193
+        },
+        {
+          "x": 70,
+          "y": 1494,
+          "w": 1024,
+          "h": 242,
+          "centerX": 582,
+          "centerY": 1615
+        }
+      ],
+      "dominantColor": "#e2d0ac"
+    },
+    {
+      "file": "page-033.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [],
+      "dominantColor": "#46361c"
+    },
+    {
+      "file": "page-034.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 504,
+          "y": 386,
+          "w": 613,
+          "h": 349,
+          "centerX": 810,
+          "centerY": 560
+        },
+        {
+          "x": 0,
+          "y": 724,
+          "w": 486,
+          "h": 868,
+          "centerX": 243,
+          "centerY": 1158
+        },
+        {
+          "x": 504,
+          "y": 749,
+          "w": 613,
+          "h": 803,
+          "centerX": 810,
+          "centerY": 1150
+        }
+      ],
+      "dominantColor": "#866f57"
+    },
+    {
+      "file": "page-035.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [],
+      "dominantColor": "#0b0b0b"
+    },
+    {
+      "file": "page-036.jpg",
+      "width": 1171,
+      "height": 1799,
+      "panels": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1171,
+          "h": 898,
+          "centerX": 585,
+          "centerY": 449
+        },
+        {
+          "x": 0,
+          "y": 937,
+          "w": 1171,
+          "h": 862,
+          "centerX": 585,
+          "centerY": 1368
+        }
+      ],
+      "dominantColor": "#57392c"
+    },
+    {
+      "file": "page-037.jpg",
+      "width": 1800,
+      "height": 1135,
+      "panels": [
+        {
+          "x": 428,
+          "y": 96,
+          "w": 556,
+          "h": 242,
+          "centerX": 706,
+          "centerY": 217
+        },
+        {
+          "x": 586,
+          "y": 710,
+          "w": 445,
+          "h": 281,
+          "centerX": 808,
+          "centerY": 850
+        },
+        {
+          "x": 1250,
+          "y": 722,
+          "w": 184,
+          "h": 253,
+          "centerX": 1342,
+          "centerY": 848
+        }
+      ],
+      "dominantColor": "#d3d9e8"
+    }
+  ]
+}

@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-06-19T17:59:09.171972+00:00",
+  "generatedAt": "2026-06-22T08:50:36.381597+00:00",
   "series": [
+    {
+      "id": "catacomb-of-torment",
+      "title": "Catacomb of Torment",
+      "cover": "page-001.jpg",
+      "issueCount": 1,
+      "path": "catacomb-of-torment"
+    },
     {
       "id": "tales-from-the-crypt-v2",
       "title": "Tales from the Crypt v2",
