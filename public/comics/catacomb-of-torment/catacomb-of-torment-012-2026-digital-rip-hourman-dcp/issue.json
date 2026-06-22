@@ -15,24 +15,7 @@
       "file": "page-002.jpg",
       "width": 1171,
       "height": 1799,
-      "panels": [
-        {
-          "x": 0,
-          "y": 0,
-          "w": 417,
-          "h": 1799,
-          "centerX": 208,
-          "centerY": 899
-        },
-        {
-          "x": 555,
-          "y": 0,
-          "w": 616,
-          "h": 1799,
-          "centerX": 863,
-          "centerY": 899
-        }
-      ],
+      "panels": [],
       "dominantColor": "#090909"
     },
     {
@@ -63,16 +46,7 @@
       "file": "page-004.jpg",
       "width": 1171,
       "height": 1799,
-      "panels": [
-        {
-          "x": 69,
-          "y": 236,
-          "w": 1038,
-          "h": 371,
-          "centerX": 588,
-          "centerY": 421
-        }
-      ],
+      "panels": [],
       "dominantColor": "#b499be"
     },
     {
@@ -1381,32 +1355,7 @@
       "file": "page-037.jpg",
       "width": 1800,
       "height": 1135,
-      "panels": [
-        {
-          "x": 428,
-          "y": 96,
-          "w": 556,
-          "h": 242,
-          "centerX": 706,
-          "centerY": 217
-        },
-        {
-          "x": 586,
-          "y": 710,
-          "w": 445,
-          "h": 281,
-          "centerX": 808,
-          "centerY": 850
-        },
-        {
-          "x": 1250,
-          "y": 722,
-          "w": 184,
-          "h": 253,
-          "centerX": 1342,
-          "centerY": 848
-        }
-      ],
+      "panels": [],
       "dominantColor": "#d3d9e8"
     }
   ]
