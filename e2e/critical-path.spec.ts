@@ -98,6 +98,31 @@ test.describe("NetComix critical path", () => {
     await expect(page.getByTestId("hud")).toBeHidden();
   });
 
+  test("HUD scrubber seeks pages and Restart returns to the cover", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("series-card-tales-from-the-crypt-v2").click();
+    await page.getByTestId("issue-card-tales-from-the-crypt-v2-01-papercutz-2007-wildbluezero").click();
+    const box = await page.getByTestId("reader").boundingBox();
+    if (!box) throw new Error("no bounding box");
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.getByTestId("hud")).toBeVisible();
+
+    // Scrub forward several pages — page count and image src should follow.
+    const img = page.getByTestId("page-image");
+    const srcBefore = await img.getAttribute("src");
+    await page.getByTestId("hud-scrubber").fill("4");
+    await expect(page.getByTestId("hud")).toContainText("Page 5 /");
+    await page.waitForTimeout(450);
+    const srcAfter = await img.getAttribute("src");
+    expect(srcAfter).not.toBe(srcBefore);
+
+    // Restart → HUD closes and we're back on the cover (page 1).
+    await page.getByTestId("hud-restart").click();
+    await expect(page.getByTestId("hud")).toBeHidden();
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.getByTestId("hud")).toContainText("Page 1 /");
+  });
+
   test("HUD settings persist across reloads", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("series-card-tales-from-the-crypt-v2").click();

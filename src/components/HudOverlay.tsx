@@ -3,19 +3,25 @@ import type { Settings, ButtonPosition, TransitionStyle } from "../settings";
 interface Props {
   title: string;
   subtitle: string;
-  progressPct: number;
+  pageIndex: number;
+  totalPages: number;
   settings: Settings;
   onChangeSettings: (s: Settings) => void;
+  onSeek: (pageIndex: number) => void;
+  onRestart: () => void;
   onClose: () => void;
   onBack: () => void;
 }
 
 export function HudOverlay({
-  title, subtitle, progressPct,
-  settings, onChangeSettings, onClose, onBack,
+  title, subtitle, pageIndex, totalPages,
+  settings, onChangeSettings, onSeek, onRestart, onClose, onBack,
 }: Props) {
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) =>
     onChangeSettings({ ...settings, [k]: v });
+
+  const lastPage = Math.max(0, totalPages - 1);
+  const seekPct = lastPage > 0 ? (pageIndex / lastPage) * 100 : 0;
 
   return (
     <div className="hud" data-testid="hud" data-nohud onClick={(e) => e.stopPropagation()}>
@@ -33,8 +39,29 @@ export function HudOverlay({
       <div className="hud-progress-section">
         <div className="hud-title">{title}</div>
         <div className="hud-subtitle">{subtitle}</div>
-        <div className="hud-bar">
-          <div className="hud-bar-fill" style={{ width: `${progressPct}%` }} />
+        <input
+          className="hud-scrubber"
+          data-testid="hud-scrubber"
+          type="range"
+          min={0}
+          max={lastPage}
+          step={1}
+          value={pageIndex}
+          aria-label="Scrub to page"
+          onChange={(e) => onSeek(parseInt(e.target.value, 10))}
+          style={{ "--seek-pct": `${seekPct}%` } as React.CSSProperties}
+        />
+        <div className="hud-scrubber-meta">
+          <button
+            className="hud-restart-btn"
+            data-testid="hud-restart"
+            onClick={onRestart}
+          >
+            ↺ Restart
+          </button>
+          <span className="hud-page-count">
+            Page {pageIndex + 1} / {totalPages}
+          </span>
         </div>
       </div>
 

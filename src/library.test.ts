@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { IssueManifest, PageManifest, Panel } from "./types";
-import { applyZoneGrid } from "./library";
+import type { IssueManifest, PageManifest, Panel, FocusRegion } from "./types";
+import { applyZoneGrid, isDegeneratePage, montagePage, normalizeMontagePages } from "./library";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -197,4 +197,158 @@ describe("applyZoneGrid — edge cases", () => {
     expect(zones[5].h).toBe(600); // no remainder
   });
 });
+
+// ─── Montage / degenerate-layout handling ─────────────────────────────────────
+
+function beat(x: number, y: number, w: number, h: number, kind: FocusRegion["kind"] = "balloon"): FocusRegion {
+  return { x, y, w, h, centerX: x + Math.round(w / 2), centerY: y + Math.round(h / 2), kind };
+}
+function panelWithBeats(x: number, y: number, w: number, h: number, beats: FocusRegion[]): Panel {
+  return { ...makePanel(x, y, w, h), beats };
+}
+
+describe("isDegeneratePage", () => {
+  const PW = 1171, PH = 1799;
+
+  it("flags a page where a full-height ribbon sits beside much shorter panels (page-7 shape)", () => {
+    const page = makePage(PW, PH, [
+      makePanel(0, 0, 544, 711),       // short left block
+      makePanel(544, 0, 344, PH),      // full-height ribbon
+      makePanel(944, 0, 227, PH),      // full-height ribbon
+      makePanel(0, 711, 544, 671),     // short
+      makePanel(0, 1382, 544, 417),    // short
+    ]);
+    expect(isDegeneratePage(page)).toBe(true);
+  });
+
+  it("does NOT flag a clean uniform 3-column layout (all full-height)", () => {
+    const page = makePage(PW, PH, [
+      makePanel(0, 0, 390, PH),
+      makePanel(390, 0, 390, PH),
+      makePanel(780, 0, 391, PH),
+    ]);
+    expect(isDegeneratePage(page)).toBe(false);
+  });
+
+  it("does NOT flag a banner-over-grid layout (no full-height ribbon)", () => {
+    const page = makePage(PW, PH, [
+      makePanel(0, 0, PW, 500),         // wide banner
+      makePanel(0, 500, 585, 1299),     // ~0.72H
+      makePanel(586, 500, 585, 1299),
+    ]);
+    expect(isDegeneratePage(page)).toBe(false);
+  });
+
+  it("does NOT flag pages with fewer than 3 panels", () => {
+    const page = makePage(PW, PH, [makePanel(0, 0, 585, PH), makePanel(586, 0, 585, 600)]);
+    expect(isDegeneratePage(page)).toBe(false);
+  });
+});
+
+describe("montagePage", () => {
+  const PW = 1171, PH = 1799;
+
+  it("collapses panels to one page-sized panel and flattens beats into reading order", () => {
+    const page = makePage(PW, PH, [
+      panelWithBeats(544, 0, 344, PH, [
+        beat(562, 1232, 326, 90),  // middle row, center column
+        beat(562, 981, 326, 90),   // upper row, center column
+      ]),
+      panelWithBeats(0, 0, 544, 711, [
+        beat(331, 78, 133, 56),    // top row, left
+      ]),
+    ]);
+    const m = montagePage(page);
+    expect(m.montage).toBe(true);
+    expect(m.panels).toHaveLength(1);
+    const p = m.panels[0];
+    expect(p).toMatchObject({ x: 0, y: 0, w: PW, h: PH });
+    // Reading order: top row first, then the two center-column beats by y.
+    expect(p.beats!.map((b) => b.y)).toEqual([78, 981, 1232]);
+  });
+
+  it("reads a multi-column grid row left-to-right, keeping stacked balloons together", () => {
+    // Two grid rows of three columns. The detected beats arrive out of order;
+    // vertically-overlapping beats must group into one reading row and sort
+    // left-to-right, even when a tall balloon starts slightly lower.
+    const page = makePage(PW, PH, [
+      panelWithBeats(0, 0, PW, PH, [
+        beat(945, 971, 194, 88),   // row A, right col, top balloon
+        beat(83, 1021, 159, 84),   // row A, left col
+        beat(562, 980, 326, 90),   // row A, middle col, top balloon
+        beat(945, 1079, 194, 142), // row A, right col, 2nd balloon (overlaps row A)
+        beat(945, 1565, 158, 70),  // row B, right col
+        beat(562, 1592, 326, 152), // row B, middle col (taller, starts lower)
+      ]),
+    ]);
+    const xs = montagePage(page).panels[0].beats!.map((b) => b.x);
+    expect(xs).toEqual([83, 562, 945, 945, 562, 945]);
+  });
+
+  it("keeps a column's stacked dialogue together (no bounce to an adjacent column)", () => {
+    // Page-7 row A: middle column has a balloon LOWER than the right column's
+    // bottom. A flat row sort reads mid → right → right → back-to-mid; the
+    // XY-cut must read each column top-to-bottom, columns left-to-right.
+    const page = makePage(PW, PH, [
+      panelWithBeats(0, 0, PW, PH, [
+        beat(945, 971, 194, 88),   // right col, top
+        beat(83, 1021, 159, 83),   // left col, top
+        beat(562, 980, 326, 89),   // middle col, top
+        beat(945, 1079, 194, 142), // right col, bottom
+        beat(251, 1021, 242, 83),  // left col, 2nd (same row as left top)
+        beat(562, 1232, 326, 89),  // middle col, bottom (lower than right col)
+      ]),
+    ]);
+    const xs = montagePage(page).panels[0].beats!.map((b) => b.x);
+    // left(83,251) → middle(562,562) → right(945,945)
+    expect(xs).toEqual([83, 251, 562, 562, 945, 945]);
+  });
+
+  it("drops sliver/junk beats below the minimum size", () => {
+    const page = makePage(PW, PH, [
+      panelWithBeats(0, 0, 544, 711, [
+        beat(84, 1021, 159, 84),
+        beat(520, 1021, 24, 84), // junk: 24px wide
+      ]),
+      makePanel(544, 0, 344, PH),
+      makePanel(944, 0, 227, PH),
+    ]);
+    const m = montagePage(page);
+    expect(m.panels[0].beats).toHaveLength(1);
+    expect(m.panels[0].beats![0].w).toBe(159);
+  });
+
+  it("becomes a pure splash (no panels) when there are no usable beats", () => {
+    const page = makePage(PW, PH, [
+      makePanel(0, 0, 544, 711),
+      makePanel(544, 0, 344, PH),
+      makePanel(944, 0, 227, PH),
+    ]);
+    const m = montagePage(page);
+    expect(m.montage).toBe(true);
+    expect(m.panels).toHaveLength(0);
+  });
+});
+
+describe("normalizeMontagePages", () => {
+  const PW = 1171, PH = 1799;
+
+  it("never touches the cover, normalizes degenerate interior pages only", () => {
+    const cover = makePage(PW, PH, []);
+    const degenerate = makePage(PW, PH, [
+      panelWithBeats(0, 0, 544, 711, [beat(331, 78, 133, 56)]),
+      makePanel(544, 0, 344, PH),
+      makePanel(944, 0, 227, PH),
+      makePanel(0, 711, 544, 671),
+    ]);
+    const clean = makePage(PW, PH, [makePanel(0, 0, 585, PH), makePanel(586, 0, 585, PH)]);
+    const result = normalizeMontagePages(makeIssue([cover, degenerate, clean]));
+    expect(result.pages[0].montage).toBeUndefined();
+    expect(result.pages[1].montage).toBe(true);
+    expect(result.pages[1].panels).toHaveLength(1);
+    expect(result.pages[2].montage).toBeUndefined();
+    expect(result.pages[2].panels).toHaveLength(2);
+  });
+});
+
 

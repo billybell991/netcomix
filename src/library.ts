@@ -1,5 +1,5 @@
 // Library fetch helpers — static /comics/ manifest tree served from GitHub Pages.
-import type { IssueIndexEntry, IssueManifest, Library, PageManifest, Panel, SeriesIndex } from "./types";
+import type { IssueIndexEntry, IssueManifest, Library, PageManifest, Panel, SeriesIndex, FocusRegion } from "./types";
 
 // ─── Static-mode (kept for local dev / demo fallback) ──────────────────────
 
@@ -78,7 +78,140 @@ export function applyZoneGrid(manifest: IssueManifest): IssueManifest {
 }
 
 export async function fetchIssue(issuePath: string, _issue?: IssueIndexEntry): Promise<IssueManifest> {
-  return fetchJson<IssueManifest>(`${COMICS_BASE}${issuePath}/issue.json`);
+  const manifest = await fetchJson<IssueManifest>(`${COMICS_BASE}${issuePath}/issue.json`);
+  return normalizeMontagePages(manifest);
+}
+
+// --- Montage / degenerate-layout handling -------------------------------------
+// Some pages (montages, collages) have no clean gutters, so the panel splitter
+// carves full-height vertical "ribbons" alongside much shorter panels. Snapping
+// to a ribbon shows an unreadable thin strip and the reading order jumps around
+// — a hot mess. We detect that inconsistent layout and read the page as a whole
+// instead, stepping through its text beats in reading order.
+
+/** Drop beat boxes smaller than this (px) — usually detection slivers/junk. */
+const MONTAGE_MIN_BEAT_PX = 28;
+
+/**
+ * A page is "degenerate" when the splitter produced an inconsistent layout:
+ * at least one (near) full-height panel together with much shorter ones. Clean
+ * grids, banners, and uniform column layouts don't trigger this — only the
+ * mixed-height carving that montage pages produce.
+ */
+export function isDegeneratePage(page: PageManifest): boolean {
+  const { width: W, height: H, panels } = page;
+  if (!W || !H || panels.length < 3) return false;
+  const heights = panels.map((p) => p.h);
+  const tallest = Math.max(...heights);
+  const shortest = Math.min(...heights);
+  return tallest >= 0.9 * H && shortest <= 0.5 * H;
+}
+
+/** Collapse a degenerate page into a single page-sized panel whose beats are
+ *  every text region flattened into reading order. */
+export function montagePage(page: PageManifest): PageManifest {
+  const W = page.width;
+  const H = page.height;
+  const beats = page.panels
+    .flatMap((p) => p.beats ?? [])
+    .filter((b) => b.w >= MONTAGE_MIN_BEAT_PX && b.h >= MONTAGE_MIN_BEAT_PX);
+
+  const ordered = orderBeatsForReading(beats, W, H);
+
+  if (ordered.length === 0) {
+    // Nothing to read into — pure full-page splash.
+    return { ...page, montage: true, panels: [] };
+  }
+
+  const panel: Panel = {
+    x: 0,
+    y: 0,
+    w: W,
+    h: H,
+    centerX: Math.round(W / 2),
+    centerY: Math.round(H / 2),
+    beats: ordered,
+  };
+  return { ...page, montage: true, panels: [panel] };
+}
+
+/** Minimum empty strip (as a fraction of the page) that separates beats into
+ *  distinct reading groups. The horizontal threshold is tighter than the
+ *  vertical one because columns sit closer together than the gaps between
+ *  montage rows / grid rows. */
+const READ_CUT_GAP_X = 0.025;
+const READ_CUT_GAP_Y = 0.04;
+
+/**
+ * Order flattened beats into natural comic reading order via a recursive
+ * XY-cut. We slice the region at empty strips, alternating axes: horizontal
+ * cuts split it into stacked bands (montage rows, grid rows), vertical cuts
+ * split a band into columns. Recursing down each column keeps a panel's stacked
+ * dialogue together, then reads columns left-to-right and bands top-to-bottom —
+ * the way a comic page is actually read. (A flat row sort can't do this: when an
+ * adjacent column has a balloon at an in-between height, it interleaves the two
+ * columns and the camera bounces between panels.)
+ */
+function orderBeatsForReading(beats: FocusRegion[], W: number, H: number): FocusRegion[] {
+  if (beats.length <= 1) return [...beats];
+  const gapX = Math.max(1, W * READ_CUT_GAP_X);
+  const gapY = Math.max(1, H * READ_CUT_GAP_Y);
+  return xyCut(beats, "y", gapX, gapY);
+}
+
+function xyCut(
+  beats: FocusRegion[],
+  prefer: "x" | "y",
+  gapX: number,
+  gapY: number,
+): FocusRegion[] {
+  if (beats.length <= 1) return beats;
+  const axes = prefer === "y" ? (["y", "x"] as const) : (["x", "y"] as const);
+  for (const axis of axes) {
+    const groups = splitByGap(beats, axis, axis === "x" ? gapX : gapY);
+    if (groups.length > 1) {
+      const next = axis === "y" ? "x" : "y";
+      return groups.flatMap((g) => xyCut(g, next, gapX, gapY));
+    }
+  }
+  // No gap on either axis — an interleaved cluster. Read top-to-bottom, then
+  // left-to-right.
+  return [...beats].sort((a, b) => a.y - b.y || a.centerX - b.centerX);
+}
+
+/** Split beats into position-ordered groups separated by an empty strip
+ *  (> minGap) along the given axis. */
+function splitByGap(
+  beats: FocusRegion[],
+  axis: "x" | "y",
+  minGap: number,
+): FocusRegion[][] {
+  const lo = (b: FocusRegion) => (axis === "y" ? b.y : b.x);
+  const hi = (b: FocusRegion) => (axis === "y" ? b.y + b.h : b.x + b.w);
+  const sorted = [...beats].sort((a, b) => lo(a) - lo(b));
+  const groups: FocusRegion[][] = [];
+  let current: FocusRegion[] = [];
+  let reach = -Infinity;
+  for (const b of sorted) {
+    if (current.length > 0 && lo(b) - reach > minGap) {
+      groups.push(current);
+      current = [];
+    }
+    current.push(b);
+    reach = Math.max(reach, hi(b));
+  }
+  if (current.length) groups.push(current);
+  return groups;
+}
+
+/** Replace every degenerate page (never the cover) with its montage form. */
+export function normalizeMontagePages(manifest: IssueManifest): IssueManifest {
+  return {
+    ...manifest,
+    pages: manifest.pages.map((page, idx) =>
+      idx > 0 && isDegeneratePage(page) ? montagePage(page) : page,
+    ),
+  };
 }
 
 /** URL for a page image — static path. */

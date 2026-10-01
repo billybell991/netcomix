@@ -15,6 +15,8 @@ export interface Settings {
   colorMatchBackground: boolean;
   transitionStyle: TransitionStyle;
   panelSnap: boolean;
+  /** Snap into individual speech balloons / captions within each panel. */
+  beatSnap: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -27,6 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
   colorMatchBackground: true,
   transitionStyle: "cinematic",
   panelSnap: true,
+  beatSnap: true,
 };
 
 const KEY = "netcomix.settings.v2";
