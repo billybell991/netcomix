@@ -46,6 +46,44 @@
   opacity: 1;
 }
 
+/* ─── Panel spotlight mask ────────────────────────────────────────────────
+   Dims everything outside the active panel so neighbouring panels (which are
+   still visible on screen — we never crop panel art) don't visually bleed
+   into the "focused" view. One box-shadow spread covers the rest of the
+   screen in a single element rather than four separate bars. */
+.panel-spotlight {
+  position: absolute; z-index: 2;
+  pointer-events: none;
+  border-radius: 4px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.82);
+}
+.panel-spotlight.transition-cinematic {
+  transition: left 0.42s cubic-bezier(0.22, 0.61, 0.36, 1),
+              top 0.42s cubic-bezier(0.22, 0.61, 0.36, 1),
+              width 0.42s cubic-bezier(0.22, 0.61, 0.36, 1),
+              height 0.42s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* ─── Persistent back button ─────────────────────────────────────────────
+   Double-tap-for-HUD is not discoverable on its own — this stays on screen
+   at all times so "how do I get out of here" always has an obvious answer. */
+.reader-back-btn {
+  position: absolute; z-index: 7;
+  top: calc(var(--safe-top) + 8px);
+  left: 10px;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; line-height: 1;
+  color: rgba(255,255,255,0.85);
+  transition: opacity 0.15s, transform 0.1s;
+}
+.reader-back-btn:active { transform: scale(0.9); opacity: 0.65; }
+
 /* ─── Navigation buttons ─────────────────────────────────────────────────── */
 .reader-nav-btn {
   position: absolute; z-index: 5;
@@ -61,7 +99,7 @@
 /* Ghost visible buttons for corner mode */
 .ghost-btn {
   position: absolute; z-index: 6;
-  width: 80px; height: 64px;
+  width: 160px; height: 128px;
   border-radius: 12px;
   border: none;
   display: flex; align-items: center; justify-content: center;
@@ -69,7 +107,7 @@
   color: rgba(255,255,255,0.8);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  transition: opacity 0.2s, transform 0.1s;
+  transition: transform 0.1s;
 }
 .ghost-btn:active { transform: scale(0.93); }
 .ghost-btn.corner-left  { bottom: calc(var(--safe-bottom) + 28px); left:  16px; }
@@ -77,6 +115,15 @@
 .ghost-btn.side-left    { top: 50%; transform: translateY(-50%); left:  0; border-radius: 0 8px 8px 0; }
 .ghost-btn.side-right   { top: 50%; transform: translateY(-50%); right: 0; border-radius: 8px 0 0 8px; }
 .ghost-btn.side-left:active, .ghost-btn.side-right:active { transform: translateY(-50%) scale(0.95); }
+
+/* The chevron glyph fades independently of the tap-zone tint (see iconOpacity
+   in Reader.tsx) so the button stays discoverable even at low buttonOpacity. */
+.nav-chevron {
+  font-size: 2rem;
+  line-height: 1;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.7);
+  transition: opacity 0.2s;
+}
 
 /* ─── Panel progress dots ────────────────────────────────────────────────── */
 .panel-dots {
@@ -174,17 +221,54 @@
   font-size: 0.78rem; color: var(--text-dim);
   margin-bottom: 10px;
 }
-.hud-bar {
-  height: 4px;
-  background: rgba(255,255,255,0.12);
-  border-radius: 2px;
-  overflow: hidden;
+
+/* ─── Page scrubber (seamless seek) ──────────────────────────────────────── */
+.hud-scrubber {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0%, var(--accent) var(--seek-pct, 0%),
+    rgba(255,255,255,0.14) var(--seek-pct, 0%), rgba(255,255,255,0.14) 100%
+  );
+  outline: none; cursor: pointer;
+  margin: 2px 0 12px;
+  touch-action: none; /* let the thumb drag without the page swallowing it */
 }
-.hud-bar-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: width 0.4s ease;
+.hud-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--accent);
+  box-shadow: 0 1px 5px rgba(0,0,0,0.45);
+  cursor: grab;
+}
+.hud-scrubber:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.15); }
+.hud-scrubber::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--accent);
+  box-shadow: 0 1px 5px rgba(0,0,0,0.45);
+  cursor: grab;
+}
+
+.hud-scrubber-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+}
+.hud-restart-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.8rem; font-weight: 600; color: var(--text);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.hud-restart-btn:active { opacity: 0.6; }
+.hud-page-count {
+  font-size: 0.75rem; color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
 }
 
 .hud-settings {

@@ -5,7 +5,7 @@ import {
   deserialize, initialPosition, isCover,
   nextPosition, prevPosition, serialize,
 } from "../reader-state";
-import { fitPage, snapToPanel, transformToCss, type ViewportTransform } from "../viewport";
+import { fitPage, snapToPanel, snapToBeat, transformToCss, type ViewportTransform } from "../viewport";
 import { hapticLight, hapticMedium, playPageTurn, playTick } from "../feedback";
 import { loadSettings, saveSettings, type Settings } from "../settings";
 import { getProgress, setProgress, setLastRead } from "../storage";
@@ -75,8 +75,12 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     if (!settings.panelSnap || position.panelIndex === -1) return fitPage(currentPage, screenSize);
     const panel = currentPage.panels[position.panelIndex];
     if (!panel) return fitPage(currentPage, screenSize);
+    // Look into a specific text beat (balloon/caption) when one is selected.
+    if (settings.beatSnap && position.beatIndex >= 0 && panel.beats?.[position.beatIndex]) {
+      return snapToBeat(panel.beats[position.beatIndex], panel, screenSize);
+    }
     return snapToPanel(panel, screenSize);
-  }, [issue, currentPage, position, screenSize, settings.panelSnap]);
+  }, [issue, currentPage, position, screenSize, settings.panelSnap, settings.beatSnap]);
 
   const pinch = usePinchZoom(stageEl, snapTransform);
   const effectiveTransform = pinch.active && pinch.transform ? pinch.transform : snapTransform;
@@ -104,15 +108,8 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     return () => cancelAnimationFrame(id);
   }, [fadeState]);
 
-  if (!issue || !currentPage) {
-    return (
-      <div className="empty-state" data-testid="reader-loading">
-        <p>Loading…</p>
-      </div>
-    );
-  }
-
-  // Navigation with transition support
+  // Navigation with transition support. Defined before the early return (and
+  // not itself a hook) so the keyboard-nav effect below can call it.
   const navigate = (nextPos: ReturnType<typeof nextPosition>) => {
     if (!nextPos) return;
     if (pinch.active) pinch.reset();
@@ -135,8 +132,51 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     }
   };
 
-  const goNext = () => navigate(nextPosition(position, issue));
-  const goPrev = () => navigate(prevPosition(position, issue));
+  const goNext = () => { if (issue) navigate(nextPosition(position, issue, settings.beatSnap)); };
+  const goPrev = () => { if (issue) navigate(prevPosition(position, issue, settings.beatSnap)); };
+
+  // Keyboard navigation for desktop/browser users — arrow keys / space to
+  // page through, Escape to close the HUD (or back out if it's already closed).
+  // MUST be before the early return (Rules of Hooks).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        hudOpen ? setHudOpen(false) : onBack();
+        return;
+      }
+      if (hudOpen) return;
+      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); goNext(); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [issue, position, settings.beatSnap, settings.transitionStyle, settings.haptics, settings.sounds, hudOpen, onBack]);
+
+  if (!issue || !currentPage) {
+    return (
+      <div className="empty-state" data-testid="reader-loading">
+        <p>Loading…</p>
+      </div>
+    );
+  }
+
+  // Jump straight to any page's full-page view (HUD scrubber). Set position
+  // directly — the cinematic transform transition keeps the jump smooth, and
+  // skipping the fade machinery makes rapid scrubbing feel responsive.
+  const seekToPage = (pageIndex: number) => {
+    const last = issue.pages.length - 1;
+    const clamped = Math.max(0, Math.min(last, pageIndex));
+    if (pinch.active) pinch.reset();
+    setPosition({ pageIndex: clamped, panelIndex: -1, beatIndex: -1 });
+  };
+
+  // "Start from the beginning" — back to the cover.
+  const restart = () => {
+    if (pinch.active) pinch.reset();
+    setPosition(initialPosition());
+    setHudOpen(false);
+  };
 
   // Handle fade overlay transition end
   const handleFadeTransitionEnd = () => {
@@ -186,7 +226,6 @@ export function Reader({ issue, issuePath, onBack }: Props) {
     : { background: "#000" };
 
   const totalPages = issue.pages.length;
-  const progressPct = ((position.pageIndex + 1) / totalPages) * 100;
   const panelCount = settings.panelSnap ? currentPage.panels.length : 0;
   const hudSubtitle = isCover(position)
     ? "Cover"
@@ -194,9 +233,22 @@ export function Reader({ issue, issuePath, onBack }: Props) {
       ? `Page ${position.pageIndex + 1} of ${totalPages} · Panel ${position.panelIndex + 1} of ${panelCount}`
       : `Page ${position.pageIndex + 1} of ${totalPages}`;
   const opacity = Math.max(settings.buttonOpacity, 0.02);
+  // Icons stay legible even when the user dials buttonOpacity way down for a
+  // cleaner look — only the tap-zone tint follows their slider exactly.
+  const iconOpacity = Math.max(opacity * 2.4, 0.3);
   const navClass = settings.buttonPosition === "corners" ? "corner" : "side";
   const imgClass = [
     "reader-page-img",
+    settings.transitionStyle === "cinematic" && !pinch.active ? "transition-cinematic" : "",
+  ].filter(Boolean).join(" ");
+
+  // Dim everything outside the current panel so neighbouring panels don't
+  // visually bleed into the "focused" view — keeps the snap loop legible.
+  const spotlightPanel = settings.panelSnap && !pinch.active && position.panelIndex >= 0
+    ? currentPage.panels[position.panelIndex]
+    : undefined;
+  const spotlightClass = [
+    "panel-spotlight",
     settings.transitionStyle === "cinematic" && !pinch.active ? "transition-cinematic" : "",
   ].filter(Boolean).join(" ");
 
@@ -224,11 +276,34 @@ export function Reader({ issue, issuePath, onBack }: Props) {
         />
       </div>
 
+      {spotlightPanel && effectiveTransform && (
+        <div
+          className={spotlightClass}
+          data-testid="panel-spotlight"
+          style={{
+            left: spotlightPanel.x * effectiveTransform.scale + effectiveTransform.translateX,
+            top: spotlightPanel.y * effectiveTransform.scale + effectiveTransform.translateY,
+            width: spotlightPanel.w * effectiveTransform.scale,
+            height: spotlightPanel.h * effectiveTransform.scale,
+          }}
+        />
+      )}
+
       {/* Fade overlay for "fade" transition style */}
       <div
         className={`reader-fade-overlay ${fadeState !== "visible" ? "fading" : ""}`}
         onTransitionEnd={handleFadeTransitionEnd}
       />
+
+      {/* Always-visible, low-profile way out — double-tap-to-find-the-HUD
+          is not discoverable, so a persistent back affordance lives here too. */}
+      <button
+        className="reader-back-btn"
+        data-nohud
+        data-testid="reader-back-btn"
+        aria-label="Back to series"
+        onClick={(e) => { e.stopPropagation(); onBack(); }}
+      >‹</button>
 
       {/* Navigation tap zones */}
       <button
@@ -236,17 +311,21 @@ export function Reader({ issue, issuePath, onBack }: Props) {
         data-nohud
         data-testid="prev-btn"
         aria-label="Previous"
-        style={{ opacity, background: `rgba(255,255,255,${0.06 * opacity * 4})` }}
+        style={{ background: `rgba(255,255,255,${0.06 * opacity * 4})` }}
         onClick={(e) => { e.stopPropagation(); goPrev(); }}
-      />
+      >
+        <span className="nav-chevron" style={{ opacity: iconOpacity }}>‹</span>
+      </button>
       <button
         className={`ghost-btn ${navClass}-right`}
         data-nohud
         data-testid="next-btn"
         aria-label="Next"
-        style={{ opacity, background: `rgba(255,255,255,${0.06 * opacity * 4})` }}
+        style={{ background: `rgba(255,255,255,${0.06 * opacity * 4})` }}
         onClick={(e) => { e.stopPropagation(); goNext(); }}
-      />
+      >
+        <span className="nav-chevron" style={{ opacity: iconOpacity }}>›</span>
+      </button>
 
       {/* Panel dots (only show when on a page with multiple panels) */}
       {settings.panelSnap && panelCount > 1 && (
@@ -261,9 +340,11 @@ export function Reader({ issue, issuePath, onBack }: Props) {
 
       {/* Page counter */}
       <div className="page-counter" data-testid="page-counter">
-        {position.panelIndex >= 0 && settings.panelSnap
-          ? `P${position.pageIndex + 1} · Panel ${position.panelIndex + 1}/${panelCount}`
-          : `${position.pageIndex + 1} / ${totalPages}`}
+        {position.beatIndex >= 0 && settings.beatSnap
+          ? `P${position.pageIndex + 1} · Panel ${position.panelIndex + 1} · “” ${position.beatIndex + 1}`
+          : position.panelIndex >= 0 && settings.panelSnap
+            ? `P${position.pageIndex + 1} · Panel ${position.panelIndex + 1}/${panelCount}`
+            : `${position.pageIndex + 1} / ${totalPages}`}
       </div>
 
       {/* Panel debug overlay */}
@@ -285,6 +366,37 @@ export function Reader({ issue, issuePath, onBack }: Props) {
         );
       })}
 
+      {/* Beat (balloon/caption) debug overlay */}
+      {debugOverlay && effectiveTransform && currentPage.panels.flatMap((panel, pi) =>
+        (panel.beats ?? []).map((beat, bi) => {
+          const { translateX: tx, translateY: ty, scale: s } = effectiveTransform;
+          const isActive = pi === position.panelIndex && bi === position.beatIndex;
+          return (
+            <div
+              key={`beat-${pi}-${bi}`}
+              style={{
+                position: "absolute",
+                left: beat.x * s + tx,
+                top: beat.y * s + ty,
+                width: beat.w * s,
+                height: beat.h * s,
+                border: `2px solid ${isActive ? "#39ff14" : "#ff3ba7"}`,
+                borderRadius: 6,
+                boxShadow: isActive ? "0 0 12px #39ff14" : "none",
+                pointerEvents: "none",
+                zIndex: 7,
+              }}
+            >
+              <span style={{
+                position: "absolute", top: -2, left: 2,
+                font: "700 11px system-ui", color: isActive ? "#39ff14" : "#ff3ba7",
+                textShadow: "0 1px 2px #000",
+              }}>{bi + 1}</span>
+            </div>
+          );
+        })
+      )}
+
       {/* Dev toolbar — DEV build, or set localStorage.setItem('netcomix-debug','1') to enable on production */}
       {devMode && (
         <div className="dev-toolbar" data-nohud>
@@ -301,9 +413,12 @@ export function Reader({ issue, issuePath, onBack }: Props) {
         <HudOverlay
           title={issue.title}
           subtitle={hudSubtitle}
-          progressPct={progressPct}
+          pageIndex={position.pageIndex}
+          totalPages={totalPages}
           settings={settings}
           onChangeSettings={updateSettings}
+          onSeek={seekToPage}
+          onRestart={restart}
           onClose={() => setHudOpen(false)}
           onBack={onBack}
         />
